@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AT&T Bill Generator</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ── Editor Panel ── */
+    .editor {
+      max-width: 700px;
+      margin: 0 auto 30px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .editor-header {
+      background: #0f3460;
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #00b4d8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .editor-header svg { flex-shrink: 0; }
+    .editor-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    label { display: block; font-size: 11px; color: #7a8ba0; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; text-transform: uppercase; }
+    input, select, textarea {
+      width: 100%; background: #0d1b2a; border: 1px solid #1e3a5f;
+      border-radius: 6px; color: #e0e0e0; padding: 8px 10px;
+      font-size: 13px; outline: none; transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #00b4d8; }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: #00b4d8;
+      padding-bottom: 6px; border-bottom: 1px solid #1e3a5f;
+    }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 20px; border-radius: 6px; font-size: 13px;
+      font-weight: 700; cursor: pointer; border: none; transition: background 0.15s;
+    }
+    .btn-primary { background: #00b4d8; color: #000; }
+    .btn-primary:hover { background: #0096b3; }
+    .btn-secondary { background: #1e3a5f; color: #e0e0e0; border: 1px solid #00b4d8; }
+    .btn-secondary:hover { background: #0f3460; }
+    .btn-print { background: #005f73; color: #fff; }
+    .btn-print:hover { background: #004a5a; }
+
+    /* ── Bill Preview ── */
+    #billPreview {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* ── The Actual Bill (print-styled) ── */
+    .bill {
+      background: #fff;
+      color: #111;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    /* Header bar */
+    .bill-topbar {
+      background: #00a8e0;
+      color: #fff;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .att-logo {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: #fff;
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+    .att-logo span { color: #00cfff; }
+    .bill-topbar-right { text-align: right; font-size: 11px; opacity: 0.9; }
+
+    /* Account summary strip */
+    .bill-summary-bar {
+      background: #f0f8fc;
+      border-bottom: 2px solid #00a8e0;
+      padding: 10px 28px;
+      display: flex;
+      gap: 0;
+    }
+    .summary-cell {
+      flex: 1;
+      padding: 4px 12px;
+      border-right: 1px solid #cde8f5;
+    }
+    .summary-cell:first-child { padding-left: 0; }
+    .summary-cell:last-child { border-right: none; }
+    .summary-cell .sc-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-cell .sc-value { font-size: 14px; font-weight: 700; color: #003f6b; margin-top: 2px; }
+    .summary-cell .sc-value.amount { color: #005fa3; font-size: 20px; }
+
+    /* Main bill body */
+    .bill-body { padding: 20px 28px; }
+
+    /* Two-column header: billed-to + statement info */
+    .bill-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; }
+    .billed-to { }
+    .billed-to .bt-label { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .billed-to .bt-name { font-size: 15px; font-weight: 700; color: #111; }
+    .billed-to .bt-addr { font-size: 12px; color: #333; line-height: 1.6; margin-top: 3px; }
+
+    .stmt-info { text-align: right; }
+    .stmt-info table { width: 100%; font-size: 11px; }
+    .stmt-info td { padding: 2px 0; color: #333; }
+    .stmt-info td:first-child { color: #777; text-align: left; padding-right: 10px; }
+    .stmt-info td:last-child { text-align: right; font-weight: 600; color: #003f6b; }
+
+    /* Section headings */
+    .bill-section-head {
+      background: #003f6b;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      margin: 14px -0px 0;
+    }
+
+    /* Charge table */
+    .charge-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+    .charge-table th {
+      background: #e8f4fb; color: #003f6b; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      padding: 5px 8px; text-align: left; border-bottom: 1px solid #b8d9ee;
+    }
+    .charge-table th:last-child, .charge-table td:last-child { text-align: right; }
+    .charge-table td { padding: 5px 8px; border-bottom: 1px solid #eef4f8; color: #222; }
+    .charge-table tr:last-child td { border-bottom: none; }
+    .charge-table .subtotal td { font-weight: 700; background: #f5fbfe; color: #003f6b; border-top: 1px solid #b8d9ee; }
+    .charge-table .tax-row td { color: #555; font-size: 11px; }
+
+    /* Total box */
+    .bill-total-box {
+      margin-top: 16px;
+      border: 2px solid #00a8e0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bill-total-head {
+      background: #00a8e0;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      letter-spacing: 0.5px;
+    }
+    .bill-total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+      border-bottom: 1px solid #e0f3fb;
+      font-size: 12px;
+    }
+    .bill-total-row:last-child { border-bottom: none; }
+    .bill-total-row.grand { background: #f0faff; font-weight: 700; font-size: 15px; color: #003f6b; }
+    .bill-total-row .label { color: #444; }
+    .bill-total-row .val { font-weight: 600; color: #003f6b; }
+    .bill-total-row.grand .val { color: #005fa3; font-size: 18px; }
+
+    /* Payment info */
+    .payment-section { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pay-box { border: 1px solid #cde8f5; border-radius: 5px; padding: 10px 12px; }
+    .pay-box h4 { font-size: 10px; font-weight: 700; color: #003f6b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .pay-box p { font-size: 11px; color: #444; line-height: 1.6; }
+    .pay-box .highlight { color: #005fa3; font-weight: 700; }
+
+    /* Usage breakdown */
+    .usage-bar-wrap { margin: 6px 0 10px; }
+    .usage-label { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 3px; }
+    .usage-bar { height: 8px; background: #e0eef7; border-radius: 4px; overflow: hidden; }
+    .usage-bar-fill { height: 100%; background: linear-gradient(90deg, #00a8e0, #005fa3); border-radius: 4px; }
+
+    /* Footer */
+    .bill-footer {
+      background: #003f6b;
+      color: #a0c8e0;
+      font-size: 10px;
+      padding: 10px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .bill-footer a { color: #00cfff; text-decoration: none; }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff !important; padding: 0 !important; }
+      .editor { display: none !important; }
+      .bill { box-shadow: none !important; border-radius: 0 !important; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     EDITOR PANEL
+══════════════════════════════════════════ -->
+<div class="editor no-print">
+  <div class="editor-header">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    AT&amp;T Bill Editor
+  </div>
+  <div class="editor-body">
+
+    <div class="section-label">Account Holder / Billed To</div>
+    <div class="row2">
+      <div><label>First Name</label><input type="text" id="firstName" value="John" oninput="update()" /></div>
+      <div><label>Last Name</label><input type="text" id="lastName" value="Smith" oninput="update()" /></div>
+    </div>
+    <div><label>Street Address</label><input type="text" id="street" value="1234 Elm Street, Apt 5B" oninput="update()" /></div>
+    <div class="row3">
+      <div><label>City</label><input type="text" id="city" value="Dallas" oninput="update()" /></div>
+      <div><label>State</label><input type="text" id="stateAbbr" value="TX" maxlength="2" oninput="update()" /></div>
+      <div><label>ZIP</label><input type="text" id="zip" value="75201" oninput="update()" /></div>
+    </div>
+
+    <div class="section-label" style="margin-top:4px;">Account & Bill Details</div>
+    <div class="row2">
+      <div><label>Account Number</label><input type="text" id="accountNum" value="287-461-9832-001" oninput="update()" /></div>
+      <div><label>Phone Number on Account</label><input type="text" id="phoneNum" value="(214) 555-0183" oninput="update()" /></div>
+    </div>
+    <div class="row3">
+      <div><label>Bill Date</label><input type="date" id="billDate" value="2026-04-18" oninput="update()" /></div>
+      <div><label>Due Date</label><input type="date" id="dueDate" value="2026-05-10" oninput="update()" /></div>
+      <div><label>Service Period</label><input type="text" id="period" value="Mar 19 – Apr 18, 2026" oninput="update()" /></div>
+    </div>
+
+    <div class="section-label" style="margin-top:4px;">Plan & Charges</div>
+    <div class="row2">
+      <div><label>Plan Name</label><input type="text" id="planName" value="AT&T Unlimited Premium PL" oninput="update()" /></div>
+      <div><label>Plan Charge ($)</label><input type="number" id="planCharge" value="85.00" step="0.01" oninput="update()" /></div>
+    </div>
+    <div class="row3">
+      <div><label>Device Payment ($)</label><input type="number" id="devicePayment" value="28.75" step="0.01" oninput="update()" /></div>
+      <div><label>Insurance ($)</label><input type="number" id="insurance" value="17.00" step="0.01" oninput="update()" /></div>
+      <div><label>Previous Balance ($)</label><input type="number" id="prevBalance" value="0.00" step="0.01" oninput="update()" /></div>
+    </div>
+    <div class="row2">
+      <div><label>Tax Rate (%)</label><input type="number" id="taxRate" value="8.25" step="0.01" oninput="update()" /></div>
+      <div><label>Regulatory/Admin Fees ($)</label><input type="number" id="regFees" value="3.85" step="0.01" oninput="update()" /></div>
+    </div>
+
+    <div class="section-label" style="margin-top:4px;">Data Usage</div>
+    <div class="row3">
+      <div><label>Data Used (GB)</label><input type="number" id="dataUsed" value="28.4" step="0.1" oninput="update()" /></div>
+      <div><label>Data Limit (GB)</label><input type="number" id="dataLimit" value="100" step="1" oninput="update()" /></div>
+      <div><label>Hotspot Used (GB)</label><input type="number" id="hotspotUsed" value="5.2" step="0.1" oninput="update()" /></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-primary" onclick="update()">⟳ Refresh Bill</button>
+      <button class="btn btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
+      <button class="btn btn-secondary" onclick="randomize()">🎲 Randomize Account #</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     BILL PREVIEW
+══════════════════════════════════════════ -->
+<div id="billPreview">
+  <!-- rendered by JS -->
+</div>
+
+<script>
+  function f(id) { return document.getElementById(id) ? document.getElementById(id).value : ''; }
+  function fNum(id, def) { var v = parseFloat(f(id)); return isNaN(v) ? def : v; }
+
+  function fmtDate(isoStr) {
+    if (!isoStr) return '';
+    var parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10) + ', ' + parts[0];
+  }
+
+  function money(n) { return '$' + n.toFixed(2); }
+  function pct(used, total) { return Math.min(100, Math.round(used / total * 100)); }
+
+  function update() {
+    // Gather values
+    var firstName   = f('firstName') || 'John';
+    var lastName    = f('lastName')  || 'Smith';
+    var street      = f('street')    || '1234 Elm Street';
+    var city        = f('city')      || 'Dallas';
+    var stateAbbr   = (f('stateAbbr') || 'TX').toUpperCase();
+    var zip         = f('zip')       || '75201';
+    var accountNum  = f('accountNum')|| '287-461-9832-001';
+    var phoneNum    = f('phoneNum')  || '(214) 555-0183';
+    var billDate    = fmtDate(f('billDate'))  || 'Apr 18, 2026';
+    var dueDate     = fmtDate(f('dueDate'))   || 'May 10, 2026';
+    var period      = f('period')    || 'Mar 19 – Apr 18, 2026';
+    var planName    = f('planName')  || 'AT&T Unlimited Premium PL';
+
+    var planCharge    = fNum('planCharge', 85.00);
+    var devicePayment = fNum('devicePayment', 28.75);
+    var insurance     = fNum('insurance', 17.00);
+    var prevBalance   = fNum('prevBalance', 0.00);
+    var taxRate       = fNum('taxRate', 8.25);
+    var regFees       = fNum('regFees', 3.85);
+    var dataUsed      = fNum('dataUsed', 28.4);
+    var dataLimit     = fNum('dataLimit', 100);
+    var hotspotUsed   = fNum('hotspotUsed', 5.2);
+
+    var subtotal = planCharge + devicePayment + insurance + regFees + prevBalance;
+    var taxes    = subtotal * (taxRate / 100);
+    var total    = subtotal + taxes;
+
+    var dataBar    = pct(dataUsed, dataLimit);
+    var hotspotBar = pct(hotspotUsed, dataLimit);
+
+    // Last 4 of account
+    var acctLast4 = accountNum.replace(/[^0-9]/g,'').slice(-4);
+
+    document.getElementById('billPreview').innerHTML = `
+<div class="bill">
+
+  <!-- Top Bar -->
+  <div class="bill-topbar">
+    <div class="att-logo">AT<span>&amp;</span>T</div>
+    <div class="bill-topbar-right">
+      <div style="font-size:13px;font-weight:700;">Wireless Bill</div>
+      <div>Account ending in ${acctLast4}</div>
+    </div>
+  </div>
+
+  <!-- Summary Bar -->
+  <div class="bill-summary-bar">
+    <div class="summary-cell">
+      <div class="sc-label">Amount Due</div>
+      <div class="sc-value amount">${money(total)}</div>
+    </div>
+    <div class="summary-cell">
+      <div class="sc-label">Due Date</div>
+      <div class="sc-value">${dueDate}</div>
+    </div>
+    <div class="summary-cell">
+      <div class="sc-label">Bill Date</div>
+      <div class="sc-value">${billDate}</div>
+    </div>
+    <div class="summary-cell">
+      <div class="sc-label">Service Period</div>
+      <div class="sc-value" style="font-size:11px;margin-top:4px;">${period}</div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="bill-body">
+
+    <!-- Meta: Billed To + Statement Info -->
+    <div class="bill-meta">
+      <div class="billed-to">
+        <div class="bt-label">Billed To</div>
+        <div class="bt-name">${firstName} ${lastName}</div>
+        <div class="bt-addr">
+          ${street}<br>
+          ${city}, ${stateAbbr} ${zip}<br>
+          United States
+        </div>
+      </div>
+      <div class="stmt-info">
+        <table>
+          <tr><td>Account Number</td><td>${accountNum}</td></tr>
+          <tr><td>Wireless Number</td><td>${phoneNum}</td></tr>
+          <tr><td>Bill Date</td><td>${billDate}</td></tr>
+          <tr><td>Due Date</td><td><strong style="color:#c00;">${dueDate}</strong></td></tr>
+          <tr><td>Service Period</td><td>${period}</td></tr>
+          <tr><td>Auto Pay</td><td>Not Enrolled</td></tr>
+          <tr><td>Paper-free Billing</td><td>No</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Charges Section -->
+    <div class="bill-section-head">Monthly Charges — ${phoneNum}</div>
+    <table class="charge-table">
+      <thead>
+        <tr>
+          <th style="width:55%;">Description</th>
+          <th>Qty</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>${planName}</td>
+          <td>1</td>
+          <td>${money(planCharge)}</td>
+        </tr>
+        <tr>
+          <td>Device Payment Agreement</td>
+          <td>1</td>
+          <td>${money(devicePayment)}</td>
+        </tr>
+        <tr>
+          <td>AT&amp;T Protect Advantage for 1</td>
+          <td>1</td>
+          <td>${money(insurance)}</td>
+        </tr>
+        <tr>
+          <td>Regulatory Cost Recovery Fee</td>
+          <td>—</td>
+          <td>${money(regFees)}</td>
+        </tr>
+        ${prevBalance > 0 ? `<tr><td>Previous Balance</td><td>—</td><td>${money(prevBalance)}</td></tr>` : ''}
+        <tr class="subtotal">
+          <td colspan="2">Subtotal (before taxes)</td>
+          <td>${money(subtotal)}</td>
+        </tr>
+        <tr class="tax-row">
+          <td>Taxes &amp; Government Fees (${taxRate}%)</td>
+          <td>—</td>
+          <td>${money(taxes)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Data Usage -->
+    <div class="bill-section-head">Data Usage Summary</div>
+    <div style="padding: 10px 0 4px;">
+      <div class="usage-bar-wrap">
+        <div class="usage-label">
+          <span>Mobile Data</span>
+          <span style="font-weight:700;">${dataUsed} GB of ${dataLimit} GB used (${dataBar}%)</span>
+        </div>
+        <div class="usage-bar"><div class="usage-bar-fill" style="width:${dataBar}%"></div></div>
+      </div>
+      <div class="usage-bar-wrap">
+        <div class="usage-label">
+          <span>Mobile Hotspot</span>
+          <span style="font-weight:700;">${hotspotUsed} GB of 15 GB used (${pct(hotspotUsed,15)}%)</span>
+        </div>
+        <div class="usage-bar"><div class="usage-bar-fill" style="width:${pct(hotspotUsed,15)}%" ></div></div>
+      </div>
+    </div>
+
+    <!-- Total Box -->
+    <div class="bill-total-box">
+      <div class="bill-total-head">Total Amount Due</div>
+      <div class="bill-total-row">
+        <span class="label">Monthly Charges</span>
+        <span class="val">${money(planCharge + devicePayment + insurance + regFees)}</span>
+      </div>
+      ${prevBalance > 0 ? `<div class="bill-total-row"><span class="label">Previous Balance</span><span class="val">${money(prevBalance)}</span></div>` : ''}
+      <div class="bill-total-row">
+        <span class="label">Taxes &amp; Fees</span>
+        <span class="val">${money(taxes)}</span>
+      </div>
+      <div class="bill-total-row grand">
+        <span>Total Due by ${dueDate}</span>
+        <span class="val">${money(total)}</span>
+      </div>
+    </div>
+
+    <!-- Payment Info -->
+    <div class="payment-section">
+      <div class="pay-box">
+        <h4>How to Pay</h4>
+        <p>
+          <span class="highlight">Online:</span> att.com/myAT&amp;T<br>
+          <span class="highlight">App:</span> myAT&amp;T app<br>
+          <span class="highlight">Phone:</span> 800-331-0500<br>
+          <span class="highlight">AutoPay:</span> Enroll &amp; save $10/mo
+        </p>
+      </div>
+      <div class="pay-box">
+        <h4>Questions About Your Bill?</h4>
+        <p>
+          Visit <span class="highlight">att.com/support</span><br>
+          or call <span class="highlight">800-331-0500</span><br>
+          Mon–Fri 7am–9pm, Sat 8am–8pm CT<br>
+          Chat available 24/7 on att.com
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /bill-body -->
+
+  <!-- Footer -->
+  <div class="bill-footer">
+    <div>© 2026 AT&amp;T Intellectual Property. AT&amp;T and the globe logo are registered trademarks of AT&amp;T Intellectual Property.</div>
+    <div>att.com &nbsp;|&nbsp; 800-331-0500 &nbsp;|&nbsp; Account #${accountNum}</div>
+  </div>
+
+</div><!-- /bill -->
+`;
+  }
+
+  function randomize() {
+    var d1 = Math.floor(Math.random()*900+100);
+    var d2 = Math.floor(Math.random()*900+100);
+    var d3 = Math.floor(Math.random()*9000+1000);
+    var d4 = Math.floor(Math.random()*900+100);
+    document.getElementById('accountNum').value = d1+'-'+d2+'-'+d3+'-'+d4;
+    update();
+  }
+
+  // Init on load
+  window.onload = function() { update(); };
+</script>
+</body>
+</html>
