@@ -47,7 +47,7 @@
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
-    /* ── ECL dropdown ── */
+    /* ── ECL combined control ── */
     .ecl-select {
       width: 100%;
       background: var(--surface2);
@@ -55,13 +55,42 @@
       border-radius: 6px;
       color: var(--accent);
       padding: 8px 10px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       outline: none;
       transition: border-color 0.15s;
       cursor: pointer;
     }
     .ecl-select:focus { border-color: var(--accent); }
+
+    /* ECL slider + number row */
+    .ecl-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .ecl-slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+      cursor: pointer;
+    }
+    .ecl-num {
+      width: 52px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      padding: 5px 4px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-variant-numeric: tabular-nums;
+    }
+    .ecl-num:focus { border-color: var(--accent); }
 
     /* ── Slider control ── */
     .slider-row { display: flex; align-items: center; gap: 10px; }
@@ -186,11 +215,12 @@
       <div class="panel-header">Barcode Settings</div>
       <div class="panel-body">
 
-        <!-- ECL Dropdown -->
+        <!-- ECL: Dropdown + Slider + Number Input -->
         <div class="section-divider">Error Correction Level (ECL)</div>
-        <label for="eclSelect">Select ECL:</label>
-        <select id="eclSelect" class="ecl-select" onchange="setECL(this.value)">
-          <option value="0">0 — Minimum (smallest barcode)</option>
+
+        <label for="eclSelect">Quick Pick:</label>
+        <select id="eclSelect" class="ecl-select" onchange="onDropdownChange(this.value)">
+          <option value="0">0 — Minimum (smallest)</option>
           <option value="1">1</option>
           <option value="2">2 — Low</option>
           <option value="3">3</option>
@@ -198,10 +228,16 @@
           <option value="10">10 — Medium</option>
           <option value="20">20 — High</option>
           <option value="50">50 — Very High</option>
-          <option value="100">100 — Maximum (largest barcode)</option>
+          <option value="100">100 — Maximum (largest)</option>
         </select>
+
+        <label style="margin-top:4px;">Fine-tune (0 – 100):</label>
+        <div class="ecl-slider-row">
+          <input type="range" id="eclSlider" min="0" max="100" step="1" value="5" oninput="onSliderChange(this.value)" />
+          <input type="number" id="eclNum" class="ecl-num" min="0" max="100" value="5" onchange="onNumChange(this.value)" onkeyup="onNumChange(this.value)" />
+        </div>
         <p style="font-size:11px;color:var(--muted);margin-top:2px;">
-          Lower ECL = fewer error-correction codewords = denser / smaller barcode. Higher ECL = more redundancy = larger barcode.
+          Dropdown snaps to a preset. Slider or number input lets you pick <em>any</em> integer 0–100.
         </p>
 
         <!-- Aspect Ratio -->
@@ -210,7 +246,7 @@
           <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="5.0" oninput="updateAR()" />
           <span class="slider-val" id="arVal">5.0</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode (more columns). Range 0.5–20.0.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode. Range 0.5–20.0.</p>
 
         <!-- Columns Override -->
         <div class="section-divider" style="margin-top:8px;">Columns Override</div>
@@ -218,7 +254,7 @@
           <input type="range" id="colCount" min="0" max="30" step="1" value="0" oninput="updateCols()" />
           <span class="slider-val" id="colVal">Auto</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = let aspect ratio decide. 1–30 forces a specific column count.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = auto. 1–30 forces column count.</p>
 
         <!-- Bar Width -->
         <div class="section-divider" style="margin-top:8px;">Bar Width (px)</div>
@@ -277,10 +313,53 @@
   var currentCols = 0;
   var currentBW   = 2;
 
-  // ── ECL ──
-  function setECL(val) {
-    currentECL = parseInt(val, 10);
+  // Preset values for the dropdown
+  var ECL_PRESETS = [0, 1, 2, 3, 5, 10, 20, 50, 100];
+
+  // ── ECL: three-way sync (dropdown ↔ slider ↔ number) ──
+
+  // Called when dropdown changes → snap to preset value, sync slider + num
+  function onDropdownChange(val) {
+    var n = parseInt(val, 10);
+    currentECL = n;
+    document.getElementById('eclSlider').value = n;
+    document.getElementById('eclNum').value = n;
     generate();
+  }
+
+  // Called when slider moves → update num + try to match nearest preset in dropdown
+  function onSliderChange(val) {
+    var n = parseInt(val, 10);
+    currentECL = n;
+    document.getElementById('eclNum').value = n;
+    syncDropdown(n);
+    generate();
+  }
+
+  // Called when number input changes → clamp, update slider + dropdown
+  function onNumChange(val) {
+    var n = parseInt(val, 10);
+    if (isNaN(n)) return;
+    n = Math.max(0, Math.min(100, n));
+    currentECL = n;
+    document.getElementById('eclSlider').value = n;
+    document.getElementById('eclNum').value = n;
+    syncDropdown(n);
+    generate();
+  }
+
+  // Sync dropdown: if current value matches a preset, select it; else clear selection
+  function syncDropdown(n) {
+    var sel = document.getElementById('eclSelect');
+    var matched = false;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (parseInt(sel.options[i].value, 10) === n) {
+        sel.selectedIndex = i;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) sel.selectedIndex = -1; // no preset matches — show blank
   }
 
   // ── Other controls ──
