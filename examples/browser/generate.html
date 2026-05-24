@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AAMVA PDF417 Generator</title>
+
+<!-- PDF417 engine -->
+<script src="../../lib/pdf417.js"></script>
+
+<!-- AAMVA engine (Phase 2) -->
+<script src="../../lib/aamva/aamva-constants.js"></script>
+<script src="../../lib/aamva/aamva-dcf.js"></script>
+<script src="../../lib/aamva/aamva-icn.js"></script>
+<script src="../../lib/aamva/aamva-validator.js"></script>
+<script src="../../lib/aamva/aamva-encoder.js"></script>
+
+<style>
+/* ── Reset & Tokens ────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;scroll-behavior:smooth}
+
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;
+  --border:rgba(40,37,29,.13);--divider:rgba(40,37,29,.08);
+  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --primary:#01696f;--primary-h:#0c4e54;--primary-ring:rgba(1,105,111,.25);
+  --error:#a12c7b;--error-bg:rgba(161,44,123,.08);
+  --success:#437a22;--success-bg:rgba(67,122,34,.08);
+  --warn:#964219;--warn-bg:rgba(150,66,25,.08);
+  --radius-sm:.375rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;
+  --shadow-sm:0 1px 3px rgba(40,37,29,.08),0 1px 2px rgba(40,37,29,.05);
+  --shadow-md:0 4px 16px rgba(40,37,29,.1),0 2px 6px rgba(40,37,29,.06);
+  --shadow-lg:0 12px 40px rgba(40,37,29,.13),0 4px 12px rgba(40,37,29,.08);
+  --t:180ms cubic-bezier(.16,1,.3,1);
+}
+[data-theme="dark"]{
+  --bg:#111110;--surface:#161614;--surface-2:#1c1b19;
+  --border:rgba(255,255,255,.09);--divider:rgba(255,255,255,.05);
+  --text:#cdccca;--muted:#797876;--faint:#4a4947;
+  --primary:#4f98a3;--primary-h:#227f8b;--primary-ring:rgba(79,152,163,.25);
+  --error:#d163a7;--error-bg:rgba(209,99,167,.1);
+  --success:#6daa45;--success-bg:rgba(109,170,69,.1);
+  --warn:#fdab43;--warn-bg:rgba(253,171,67,.1);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.25);--shadow-md:0 4px 16px rgba(0,0,0,.35);--shadow-lg:0 12px 40px rgba(0,0,0,.5);
+}
+
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:15px;line-height:1.6;
+  background:var(--bg);color:var(--text);
+  min-height:100dvh;
+}
+
+/* ── Typography ────────────────────────────────────────────────────── */
+h1{font-size:clamp(1.35rem,3vw,1.9rem);font-weight:700;letter-spacing:-.02em;line-height:1.15}
+h2{font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+h3{font-size:.875rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+
+/* ── Layout ────────────────────────────────────────────────────────── */
+.app-header{
+  position:sticky;top:0;z-index:50;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:.75rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(12px);
+}
+.app-header .logo{display:flex;align-items:center;gap:.6rem}
+.app-header .logo svg{color:var(--primary)}
+.app-header .subtitle{font-size:.75rem;color:var(--muted);margin-top:.1rem;letter-spacing:.02em}
+
+.main{max-width:860px;margin:0 auto;padding:2rem 1.25rem 4rem}
+
+/* ── Theme toggle ──────────────────────────────────────────────────── */
+.theme-btn{
+  width:36px;height:36px;border-radius:var(--radius-md);
+  border:1px solid var(--border);background:var(--surface-2);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:color var(--t),background var(--t);
+}
+.theme-btn:hover{color:var(--text);background:var(--surface)}
+
+/* ── Steps indicator ───────────────────────────────────────────────── */
+.steps{
+  display:flex;align-items:center;gap:0;
+  margin-bottom:2rem;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-xl);padding:.35rem;
+}
+.step-item{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;
+  padding:.55rem .5rem;border-radius:var(--radius-lg);
+  font-size:.8rem;font-weight:500;color:var(--muted);
+  transition:background var(--t),color var(--t);
+  cursor:default;
+}
+.step-item.active{
+  background:var(--primary);color:#fff;
+  box-shadow:0 2px 8px var(--primary-ring);
+}
+.step-item.done{color:var(--primary)}
+.step-num{
+  width:20px;height:20px;border-radius:50%;
+  background:var(--border);color:var(--muted);
+  font-size:.7rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--t),color var(--t);
+}
+.step-item.active .step-num{background:rgba(255,255,255,.25);color:#fff}
+.step-item.done .step-num{background:var(--primary);color:#fff}
+.step-connector{width:1px;height:20px;background:var(--border);flex-shrink:0}
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-xl);padding:1.5rem;
+  box-shadow:var(--shadow-sm);
+}
+.card+.card{margin-top:1rem}
+
+/* ── State Grid ────────────────────────────────────────────────────── */
+.state-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+  gap:.45rem;
+  margin-top:1rem;
+}
+.state-btn{
+  padding:.55rem .4rem;
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  background:var(--surface-2);color:var(--text);
+  font-size:.8rem;font-weight:500;text-align:center;
+  cursor:pointer;
+  transition:border-color var(--t),background var(--t),color var(--t),box-shadow var(--t);
+}
+.state-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--surface)}
+.state-btn.selected{
+  border-color:var(--primary);background:var(--primary);color:#fff;
+  box-shadow:0 2px 8px var(--primary-ring);
+}
+.state-btn .state-code{display:block;font-size:1rem;font-weight:700;letter-spacing:.03em}
+.state-btn .state-name{display:block;font-size:.65rem;color:inherit;opacity:.8;margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.state-btn.selected .state-name{opacity:.9}
+
+/* ── Form grid ─────────────────────────────────────────────────────── */
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:.85rem;
+}
+.field-full{grid-column:1/-1}
+
+.field-group{display:flex;flex-direction:column;gap:.3rem}
+.field-group label{
+  font-size:.75rem;font-weight:600;
+  color:var(--muted);letter-spacing:.03em;
+}
+.field-group .req{color:var(--error)}
+.field-group .help-text{font-size:.7rem;color:var(--faint);margin-top:.15rem}
+
+input[type=text],select,textarea{
+  width:100%;
+  padding:.5rem .75rem;
+  background:var(--surface-2);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-md);
+  color:var(--text);
+  font-size:.875rem;
+  font-family:inherit;
+  transition:border-color var(--t),box-shadow var(--t),background var(--t);
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px var(--primary-ring);
+}
+input.error-field{border-color:var(--error);box-shadow:0 0 0 3px var(--error-bg)}
+.field-error{font-size:.7rem;color:var(--error);margin-top:.2rem}
+
+select option{background:var(--surface);color:var(--text)}
+
+/* ── Section heading inside form ───────────────────────────────────── */
+.section-head{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:.6rem;
+  padding-top:.25rem;
+  border-top:1px solid var(--divider);
+  margin-top:.25rem;
+}
+.section-head:first-child{border-top:none;margin-top:0;padding-top:0}
+.section-head h3{margin:0}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
+  padding:.55rem 1.25rem;
+  border-radius:var(--radius-md);
+  font-size:.875rem;font-weight:600;font-family:inherit;
+  cursor:pointer;border:none;
+  transition:background var(--t),box-shadow var(--t),opacity var(--t),transform var(--t);
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px var(--primary-ring)}
+.btn-primary:hover{background:var(--primary-h)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text)}
+.btn-sm{padding:.4rem .85rem;font-size:.8rem}
+
+.form-actions{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:1.5rem;gap:.75rem;
+}
+
+/* ── Tag / badge ───────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;gap:.3rem;
+  padding:.2rem .6rem;
+  border-radius:var(--radius-full,9999px);
+  font-size:.7rem;font-weight:600;
+  letter-spacing:.04em;
+}
+.badge-teal{background:var(--primary-ring);color:var(--primary)}
+.badge-gray{background:var(--divider);color:var(--muted)}
+
+/* ── Preview step ──────────────────────────────────────────────────── */
+.preview-layout{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:1.5rem;
+  align-items:start;
+}
+@media(max-width:640px){.preview-layout{grid-template-columns:1fr}}
+
+.barcode-wrap{
+  background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:1rem;
+  display:flex;flex-direction:column;align-items:center;gap:.75rem;
+}
+.barcode-wrap canvas{display:block;max-width:100%}
+
+.dl-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.8rem;
+}
+.dl-table th{
+  text-align:left;padding:.35rem .5rem;
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--faint);border-bottom:1px solid var(--divider);
+  width:90px;
+}
+.dl-table td{
+  padding:.35rem .5rem;
+  border-bottom:1px solid var(--divider);
+  color:var(--text);
+  word-break:break-all;
+}
+.dl-table tr:last-child td{border-bottom:none}
+
+.raw-output{
+  font-family:'JetBrains Mono','Fira Code',monospace;
+  font-size:.72rem;line-height:1.55;
+  background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  padding:.85rem 1rem;
+  white-space:pre-wrap;word-break:break-all;
+  color:var(--muted);
+  max-height:220px;overflow-y:auto;
+  margin-top:.75rem;
+}
+
+/* ── Toast ─────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:.7rem 1.25rem;
+  box-shadow:var(--shadow-lg);font-size:.85rem;font-weight:500;
+  display:flex;align-items:center;gap:.5rem;
+  z-index:999;
+  transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .35s;
+  opacity:0;
+  pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{border-color:var(--success);color:var(--success)}
+.toast.error{border-color:var(--error);color:var(--error)}
+
+/* ── Validation summary ────────────────────────────────────────────── */
+.val-summary{
+  background:var(--error-bg);border:1px solid var(--error);
+  border-radius:var(--radius-md);
+  padding:.75rem 1rem;
+  margin-bottom:1rem;
+  font-size:.8rem;color:var(--error);
+  display:none;
+}
+.val-summary.show{display:block}
+.val-summary ul{padding-left:1rem;margin-top:.35rem}
+.val-summary li{margin:.15rem 0}
+
+/* ── State info banner ─────────────────────────────────────────────── */
+.state-banner{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.65rem 1rem;
+  background:var(--primary-ring);border:1px solid var(--primary);
+  border-radius:var(--radius-md);
+  margin-bottom:1.2rem;
+  font-size:.83rem;
+}
+.state-banner strong{color:var(--primary)}
+
+/* ── Revision selector ─────────────────────────────────────────────── */
+#revision-wrap{margin-bottom:1rem}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media(max-width:560px){
+  .form-grid{grid-template-columns:1fr}
+  .field-full,.form-grid [class~=field-full]{grid-column:1/-1}
+  .steps .step-label{display:none}
+}
+
+/* ── Transition panels ─────────────────────────────────────────────── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+/* ── Focus visible ─────────────────────────────────────────────────── */
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--radius-sm)}
+
+/* select arrow */
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right .6rem center;
+  padding-right:2rem;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect x="2" y="2" width="4" height="24" fill="currentColor"/>
+      <rect x="8" y="2" width="2" height="24" fill="currentColor"/>
+      <rect x="12" y="2" width="6" height="24" fill="currentColor"/>
+      <rect x="20" y="2" width="2" height="24" fill="currentColor"/>
+      <rect x="24" y="2" width="2" height="24" fill="currentColor"/>
+    </svg>
+    <div>
+      <h1 style="font-size:1.05rem;margin:0">AAMVA PDF417 Generator</h1>
+      <div class="subtitle">Driver License Barcode · AAMVA 2016 Standard</div>
+    </div>
+  </div>
+  <button class="theme-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light/dark">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Steps -->
+  <div class="steps" role="tablist" aria-label="Steps">
+    <div class="step-item active" id="step-ind-1" role="tab">
+      <span class="step-num">1</span>
+      <span class="step-label">Select State</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step-ind-2" role="tab">
+      <span class="step-num">2</span>
+      <span class="step-label">Fill Fields</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step-ind-3" role="tab">
+      <span class="step-num">3</span>
+      <span class="step-label">Preview &amp; Download</span>
+    </div>
+  </div>
+
+  <!-- ── STEP 1: State Select ─────────────────────────────────────── -->
+  <div class="panel active" id="panel-1">
+    <div class="card">
+      <h2>Select Issuing State</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin-top:.35rem">Choose the state/territory that issued the driver license.</p>
+      <div class="state-grid" id="stateGrid"></div>
+    </div>
+    <div class="form-actions">
+      <span></span>
+      <button class="btn btn-primary" id="step1Next" disabled onclick="goStep(2)">
+        Continue <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Fields ────────────────────────────────────────────── -->
+  <div class="panel" id="panel-2">
+
+    <div id="stateBanner" class="state-banner" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      <span>Generating for: <strong id="bannerState">—</strong> &nbsp;·&nbsp; AAMVA v<strong id="bannerVer">—</strong> &nbsp;·&nbsp; IIN: <strong id="bannerIIN">—</strong></span>
+    </div>
+
+    <div id="revision-wrap" style="display:none">
+      <div class="card" style="padding:1rem 1.25rem">
+        <div class="field-group">
+          <label>Card Revision Date (DDB)</label>
+          <select id="revisionSelect" onchange="onRevisionChange()"></select>
+          <span class="help-text">Matches the physical card design on file for this state</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="val-summary" id="valSummary">
+      <strong>Please fix the following errors:</strong>
+      <ul id="valList"></ul>
+    </div>
+
+    <div class="card">
+      <form id="aamvaForm" novalidate autocomplete="off">
+        <div class="form-grid">
+
+          <!-- ── Identity ── -->
+          <div class="section-head"><h3>Identity</h3></div>
+
+          <div class="field-group">
+            <label for="f_DCS">Last Name <span class="req">*</span></label>
+            <input type="text" id="f_DCS" name="DCS" placeholder="SMITH" maxlength="40" />
+          </div>
+          <div class="field-group">
+            <label for="f_DAC">First Name <span class="req">*</span></label>
+            <input type="text" id="f_DAC" name="DAC" placeholder="JOHN" maxlength="40" />
+          </div>
+          <div class="field-group">
+            <label for="f_DAD">Middle Name</label>
+            <input type="text" id="f_DAD" name="DAD" placeholder="MICHAEL" maxlength="40" />
+          </div>
+          <div class="field-group">
+            <label for="f_DBN">Name Suffix</label>
+            <select id="f_DBN" name="DBN">
+              <option value="">None</option>
+              <option value="JR">Junior (JR)</option>
+              <option value="SR">Senior (SR)</option>
+              <option value="I">First (I)</option>
+              <option value="II">Second (II)</option>
+              <option value="III">Third (III)</option>
+              <option value="IV">Fourth (IV)</option>
+              <option value="V">Fifth (V)</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDE">Last Name Truncated</label>
+            <select id="f_DDE" name="DDE">
+              <option value="N">N — Not truncated</option>
+              <option value="T">T — Truncated</option>
+              <option value="U">U — Unknown</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDF">First Name Truncated</label>
+            <select id="f_DDF" name="DDF">
+              <option value="N">N — Not truncated</option>
+              <option value="T">T — Truncated</option>
+              <option value="U">U — Unknown</option>
+            </select>
+          </div>
+
+          <!-- ── Demographics ── -->
+          <div class="section-head"><h3>Demographics</h3></div>
+
+          <div class="field-group">
+            <label for="f_DBB">Date of Birth <span class="req">*</span></label>
+            <input type="text" id="f_DBB" name="DBB" placeholder="01/15/1990" maxlength="10" />
+            <span class="help-text">MM/DD/YYYY — auto-formats as you type</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DBC">Sex <span class="req">*</span></label>
+            <select id="f_DBC" name="DBC">
+              <option value="1">Male</option>
+              <option value="2">Female</option>
+              <option value="9">Not Specified</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DAY">Eye Color <span class="req">*</span></label>
+            <select id="f_DAY" name="DAY">
+              <option value="BLK">Black (BLK)</option>
+              <option value="BLU">Blue (BLU)</option>
+              <option value="BRO" selected>Brown (BRO)</option>
+              <option value="GRY">Gray (GRY)</option>
+              <option value="GRN">Green (GRN)</option>
+              <option value="HAZ">Hazel (HAZ)</option>
+              <option value="MAR">Maroon (MAR)</option>
+              <option value="PNK">Pink (PNK)</option>
+              <option value="DIC">Dichromatic (DIC)</option>
+              <option value="UNK">Unknown (UNK)</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DAZ">Hair Color</label>
+            <select id="f_DAZ" name="DAZ">
+              <option value="">— Select —</option>
+              <option value="BAL">Bald (BAL)</option>
+              <option value="BLK">Black (BLK)</option>
+              <option value="BLN">Blond (BLN)</option>
+              <option value="BRO">Brown (BRO)</option>
+              <option value="GRY">Gray (GRY)</option>
+              <option value="RED">Red (RED)</option>
+              <option value="AUB">Auburn (AUB)</option>
+              <option value="SDY">Sandy (SDY)</option>
+              <option value="WHI">White (WHI)</option>
+              <option value="UNK">Unknown (UNK)</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DAU">Height (inches) <span class="req">*</span></label>
+            <input type="text" id="f_DAU" name="DAU" placeholder="068" maxlength="3" />
+            <span class="help-text">Total inches — e.g. 068 = 5'08"</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DAW">Weight (lbs)</label>
+            <input type="text" id="f_DAW" name="DAW" placeholder="165" maxlength="3" />
+          </div>
+          <div class="field-group">
+            <label for="f_DCL">Race / Ethnicity</label>
+            <select id="f_DCL" name="DCL">
+              <option value="">— Select —</option>
+              <option value="AI">AI — American Indian</option>
+              <option value="AP">AP — Asian/Pacific Islander</option>
+              <option value="BK">BK — Black</option>
+              <option value="H">H — Hispanic</option>
+              <option value="O">O — Non-Hispanic</option>
+              <option value="U">U — Unknown</option>
+              <option value="W">W — White</option>
+            </select>
+          </div>
+
+          <!-- ── Address ── -->
+          <div class="section-head"><h3>Address</h3></div>
+
+          <div class="field-group field-full">
+            <label for="f_DAG">Street Address <span class="req">*</span></label>
+            <input type="text" id="f_DAG" name="DAG" placeholder="123 MAIN ST" maxlength="50" />
+          </div>
+          <div class="field-group field-full">
+            <label for="f_DAH">Address Line 2</label>
+            <input type="text" id="f_DAH" name="DAH" placeholder="APT 4B" maxlength="40" />
+          </div>
+          <div class="field-group">
+            <label for="f_DAI">City <span class="req">*</span></label>
+            <input type="text" id="f_DAI" name="DAI" placeholder="ANYTOWN" maxlength="30" />
+          </div>
+          <div class="field-group">
+            <label for="f_DAK">ZIP Code <span class="req">*</span></label>
+            <input type="text" id="f_DAK" name="DAK" placeholder="123450000" maxlength="9" />
+            <span class="help-text">5 or 9 digits, no hyphen</span>
+          </div>
+
+          <!-- ── License ── -->
+          <div class="section-head"><h3>License Info</h3></div>
+
+          <div class="field-group">
+            <label for="f_DAQ">License Number <span class="req">*</span></label>
+            <input type="text" id="f_DAQ" name="DAQ" placeholder="A1234567" maxlength="25" />
+            <span class="help-text">Auto-generated for selected state</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DCA">Vehicle Class</label>
+            <input type="text" id="f_DCA" name="DCA" placeholder="C" maxlength="6" />
+          </div>
+          <div class="field-group">
+            <label for="f_DCB">Restrictions</label>
+            <input type="text" id="f_DCB" name="DCB" placeholder="NONE" maxlength="12" />
+          </div>
+          <div class="field-group">
+            <label for="f_DCD">Endorsements</label>
+            <input type="text" id="f_DCD" name="DCD" placeholder="NONE" maxlength="5" />
+          </div>
+
+          <!-- ── Dates ── -->
+          <div class="section-head"><h3>Dates</h3></div>
+
+          <div class="field-group">
+            <label for="f_DBD">Issue Date <span class="req">*</span></label>
+            <input type="text" id="f_DBD" name="DBD" placeholder="01/15/2025" maxlength="10" />
+            <span class="help-text">MM/DD/YYYY</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DBA">Expiration Date <span class="req">*</span></label>
+            <input type="text" id="f_DBA" name="DBA" placeholder="01/15/2029" maxlength="10" />
+            <span class="help-text">MM/DD/YYYY</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DDJ">Under 18 Until</label>
+            <input type="text" id="f_DDJ" name="DDJ" placeholder="01/15/2023" maxlength="10" />
+            <span class="help-text">MM/DD/YYYY — optional</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DCG">Country of Issue</label>
+            <select id="f_DCG" name="DCG">
+              <option value="USA" selected>United States (USA)</option>
+              <option value="CAN">Canada (CAN)</option>
+              <option value="MEX">Mexico (MEX)</option>
+            </select>
+          </div>
+
+          <!-- ── Document ── -->
+          <div class="section-head"><h3>Document / Compliance</h3></div>
+
+          <div class="field-group field-full">
+            <label for="f_DCF">Document Discriminator (DCF)</label>
+            <input type="text" id="f_DCF" name="DCF" placeholder="Auto-generated" maxlength="25" />
+            <span class="help-text">Auto-filled — override if needed</span>
+          </div>
+          <div class="field-group field-full">
+            <label for="f_DCK">Inventory Control Number (DCK)</label>
+            <input type="text" id="f_DCK" name="DCK" placeholder="Auto-generated" maxlength="25" />
+            <span class="help-text">Auto-filled — override if needed</span>
+          </div>
+          <div class="field-group">
+            <label for="f_DDA">Compliance Type</label>
+            <select id="f_DDA" name="DDA">
+              <option value="F" selected>F — Compliant (REAL ID)</option>
+              <option value="N">N — Non-compliant</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDG">Middle Name Truncated</label>
+            <select id="f_DDG" name="DDG">
+              <option value="N">N — Not truncated</option>
+              <option value="T">T — Truncated</option>
+              <option value="U">U — Unknown</option>
+            </select>
+          </div>
+
+          <!-- ── Flags ── -->
+          <div class="section-head"><h3>Optional Flags</h3></div>
+
+          <div class="field-group">
+            <label for="f_DDK">Organ Donor</label>
+            <select id="f_DDK" name="DDK">
+              <option value="">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDL">Veteran</label>
+            <select id="f_DDL" name="DDL">
+              <option value="">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDD">Limited Duration Document</label>
+            <select id="f_DDD" name="DDD">
+              <option value="">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="f_DDO">Enhanced Credential</label>
+            <select id="f_DDO" name="DDO">
+              <option value="">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+
+        </div><!-- /form-grid -->
+      </form>
+    </div><!-- /card -->
+
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="goStep(1)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+      <button class="btn btn-primary" id="step2Next" onclick="handleGenerate()">
+        Generate Barcode
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="4" height="20"/><rect x="8" y="2" width="2" height="20"/><rect x="12" y="2" width="5" height="20"/><rect x="19" y="2" width="2" height="20"/></svg>
+      </button>
+    </div>
+  </div><!-- /panel-2 -->
+
+  <!-- ── STEP 3: Preview ───────────────────────────────────────────── -->
+  <div class="panel" id="panel-3">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem">
+        <h2>Preview &amp; Download</h2>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost btn-sm" onclick="goStep(2)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn btn-primary btn-sm" id="dlBtn" onclick="downloadPNG()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PNG
+          </button>
+        </div>
+      </div>
+
+      <div class="preview-layout">
+        <div class="barcode-wrap">
+          <canvas id="barcodeCanvas"></canvas>
+          <span style="font-size:.7rem;color:var(--faint);text-align:center" id="barcodeInfo"></span>
+        </div>
+        <div>
+          <h3 style="margin-bottom:.75rem">Field Summary</h3>
+          <table class="dl-table" id="dlTable"><tbody></tbody></table>
+        </div>
+      </div>
+
+      <details style="margin-top:1.25rem">
+        <summary style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);user-select:none">Raw Barcode String (debug)</summary>
+        <div class="raw-output" id="rawOutput"></div>
+      </details>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="resetAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Start Over
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPNG()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PNG
+      </button>
+    </div>
+  </div><!-- /panel-3 -->
+
+</main>
+
+<!-- ── Toast ────────────────────────────────────────────────────────── -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<script>
+// ── Theme ──────────────────────────────────────────────────────────────
+(function(){
+  var d = document.documentElement;
+  var isDark = d.getAttribute('data-theme') === 'dark';
+  var btn = document.getElementById('themeBtn');
+  function setIcon(dark){
+    btn.innerHTML = dark
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+  }
+  setIcon(isDark);
+  btn.addEventListener('click', function(){
+    isDark = !isDark;
+    d.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    setIcon(isDark);
+  });
+})();
+
+// ── State ──────────────────────────────────────────────────────────────
+var selectedState = null;
+var generatedPayload = null;
+
+// ── Build state grid ───────────────────────────────────────────────────
+(function buildStateGrid(){
+  var grid = document.getElementById('stateGrid');
+  STATE_CONFIGS.forEach(function(s){
+    var btn = document.createElement('button');
+    btn.className = 'state-btn';
+    btn.setAttribute('data-code', s.code);
+    btn.innerHTML = '<span class="state-code">'+s.code+'</span><span class="state-name">'+s.name+'</span>';
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.state-btn').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+      selectedState = s.code;
+      document.getElementById('step1Next').disabled = false;
+    });
+    grid.appendChild(btn);
+  });
+})();
+
+// ── Step navigation ────────────────────────────────────────────────────
+function goStep(n){
+  [1,2,3].forEach(function(i){
+    document.getElementById('panel-'+i).classList.toggle('active', i===n);
+    var ind = document.getElementById('step-ind-'+i);
+    ind.classList.toggle('active', i===n);
+    ind.classList.toggle('done', i<n);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===2) onEnterStep2();
+}
+
+// ── Enter step 2: populate banner, revision, autofill ─────────────────
+function onEnterStep2(){
+  var cfg = getStateConfig(selectedState);
+  if(!cfg) return;
+
+  document.getElementById('bannerState').textContent = cfg.name + ' (' + cfg.code + ')';
+  document.getElementById('bannerVer').textContent   = cfg.aamvaVersion;
+  document.getElementById('bannerIIN').textContent   = cfg.iin;
+  document.getElementById('stateBanner').style.display = 'flex';
+
+  // revision selector
+  var revs = STATE_REVISIONS[selectedState] || [];
+  var revWrap = document.getElementById('revision-wrap');
+  var revSel  = document.getElementById('revisionSelect');
+  revSel.innerHTML = '';
+  if(revs.length > 0){
+    revs.forEach(function(r,i){
+      var o = document.createElement('option');
+      o.value = r.date; o.textContent = r.label;
+      if(i===0) o.selected = true;
+      revSel.appendChild(o);
+    });
+    revWrap.style.display = 'block';
+    // set DDB
+    document.getElementById('f_DDB') && (document.getElementById('f_DDB').value = revs[0].date);
+    setDateField('f_DDB', revs[0].date);
+  } else {
+    revWrap.style.display = 'none';
+  }
+
+  // auto-fill DL number if empty
+  var dlField = document.getElementById('f_DAQ');
+  if(!dlField.value) dlField.value = generateDLNumber(selectedState);
+
+  // auto-fill DCF & DCK
+  var cfg2 = getStateConfig(selectedState);
+  var dcfField = document.getElementById('f_DCF');
+  var dckField = document.getElementById('f_DCK');
+  if(!dcfField.value) dcfField.value = generateDCF(selectedState);
+  if(!dckField.value) dckField.value = generateICN(selectedState, dlField.value, cfg2.iin);
+
+  // default dates
+  if(!document.getElementById('f_DBD').value) setDateField('f_DBD', formatToday());
+  if(!document.getElementById('f_DBA').value) setDateField('f_DBA', formatFuture(5));
+}
+
+function onRevisionChange(){
+  var sel = document.getElementById('revisionSelect');
+  setDateField('f_DDB', sel.value);
+}
+
+function setDateField(id, val){
+  var el = document.getElementById(id);
+  if(el) el.value = val;
+}
+
+function formatToday(){
+  var d = new Date();
+  return pad2(d.getMonth()+1)+'/'+pad2(d.getDate())+'/'+d.getFullYear();
+}
+function formatFuture(yrs){
+  var d = new Date();
+  d.setFullYear(d.getFullYear()+yrs);
+  return pad2(d.getMonth()+1)+'/'+pad2(d.getDate())+'/'+d.getFullYear();
+}
+function pad2(n){ return n<10?'0'+n:String(n); }
+
+// ── Date auto-format (MM/DD/YYYY) ──────────────────────────────────────
+var DATE_FIELD_IDS = ['f_DBB','f_DBA','f_DBD','f_DDJ'];
+DATE_FIELD_IDS.forEach(function(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input', function(e){
+    var raw = el.value.replace(/\D/g,'');
+    if(raw.length >= 5)      el.value = raw.slice(0,2)+'/'+raw.slice(2,4)+'/'+raw.slice(4,8);
+    else if(raw.length >= 3) el.value = raw.slice(0,2)+'/'+raw.slice(2);
+    else                     el.value = raw;
+  });
+});
+
+// ── Auto-uppercase text fields ─────────────────────────────────────────
+document.querySelectorAll('input[type=text]').forEach(function(el){
+  if(DATE_FIELD_IDS.includes(el.id)) return;
+  el.addEventListener('input', function(){ el.value = el.value.toUpperCase(); });
+});
+
+// ── Auto-regen DCF/DCK when DL# changes ───────────────────────────────
+document.getElementById('f_DAQ').addEventListener('input', function(){
+  var cfg = getStateConfig(selectedState);
+  if(!cfg) return;
+  document.getElementById('f_DCF').value = generateDCF(selectedState);
+  document.getElementById('f_DCK').value = generateICN(selectedState, this.value, cfg.iin);
+});
+
+// ── Collect form data ──────────────────────────────────────────────────
+function collectFormData(){
+  var data = {};
+  document.querySelectorAll('#aamvaForm input, #aamvaForm select').forEach(function(el){
+    if(el.name) data[el.name] = el.value.trim();
+  });
+  // DDB from revision selector
+  var revSel = document.getElementById('revisionSelect');
+  if(revSel && revSel.value) data.DDB = revSel.value;
+  data.DAJ = selectedState; // jurisdiction = issuing state
+  return data;
+}
+
+// ── Validation ─────────────────────────────────────────────────────────
+function showValidationErrors(errors){
+  // clear previous
+  document.querySelectorAll('.error-field').forEach(function(el){ el.classList.remove('error-field'); });
+  document.querySelectorAll('.field-error').forEach(function(el){ el.remove(); });
+
+  var summary = document.getElementById('valSummary');
+  var list    = document.getElementById('valList');
+  list.innerHTML = '';
+
+  errors.forEach(function(e){
+    var el = document.querySelector('[name="'+e.field+'"]');
+    if(el){
+      el.classList.add('error-field');
+      var msg = document.createElement('span');
+      msg.className = 'field-error';
+      msg.textContent = e.message;
+      el.parentNode.appendChild(msg);
+    }
+    var li = document.createElement('li');
+    li.textContent = e.message;
+    list.appendChild(li);
+  });
+
+  summary.classList.toggle('show', errors.length > 0);
+  if(errors.length > 0) summary.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── Generate ───────────────────────────────────────────────────────────
+function handleGenerate(){
+  var data   = collectFormData();
+  var errors = validateAAMVAData(data);
+  showValidationErrors(errors);
+  if(errors.length > 0){
+    showToast('Please fix '+errors.length+' error(s) before continuing.', 'error');
+    return;
+  }
+
+  try {
+    var payload = encodeAAMVA(data, selectedState);
+    generatedPayload = payload;
+    renderPreview(data, payload);
+    goStep(3);
+  } catch(ex) {
+    showToast('Encoding error: '+ex.message, 'error');
+    console.error(ex);
+  }
+}
+
+// ── Render preview ─────────────────────────────────────────────────────
+var FIELD_LABELS = {
+  DAQ:'License #', DCS:'Last Name', DAC:'First Name', DAD:'Middle Name',
+  DBB:'Date of Birth', DBC:'Sex', DAY:'Eye Color', DAZ:'Hair Color',
+  DAU:'Height', DAW:'Weight', DAG:'Address', DAI:'City', DAK:'ZIP',
+  DBA:'Expires', DBD:'Issued', DCF:'Doc Discriminator', DCK:'ICN',
+  DCA:'Class', DCB:'Restrictions', DCD:'Endorsements', DDA:'Compliance',
+  DDB:'Card Rev. Date', DCG:'Country', DDK:'Organ Donor', DDL:'Veteran',
+};
+var SEX_MAP  = {'1':'Male','2':'Female','9':'Not Specified'};
+
+function renderPreview(data, payload){
+  // barcode
+  var canvas = document.getElementById('barcodeCanvas');
+  PDF417.draw(payload, canvas);
+  document.getElementById('barcodeInfo').textContent =
+    canvas.width + ' × ' + canvas.height + ' px · PDF417';
+
+  // table
+  var tbody = document.querySelector('#dlTable tbody');
+  tbody.innerHTML = '';
+  var shown = ['DAQ','DCS','DAC','DAD','DBB','DBC','DAY','DAZ','DAU','DAW',
+               'DAG','DAI','DAK','DBA','DBD','DCA','DCB','DCD','DCF','DCK',
+               'DDA','DDB','DCG','DDK','DDL'];
+  shown.forEach(function(code){
+    var val = data[code];
+    if(!val) return;
+    var display = val;
+    if(code==='DBC') display = SEX_MAP[val]||val;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<th>'+code+'</th><td>'+(FIELD_LABELS[code]||code)+'</td><td>'+escHtml(display)+'</td>';
+    tbody.appendChild(tr);
+  });
+
+  // raw output — replace control chars for readability
+  var safe = payload
+    .replace(/\x1E/g, '<RS>')
+    .replace(/\x0D/g, '<CR>')
+    .replace(/\x0A/g, '<LF>\n');
+  document.getElementById('rawOutput').textContent = safe;
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Download ───────────────────────────────────────────────────────────
+function downloadPNG(){
+  var canvas = document.getElementById('barcodeCanvas');
+  var a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'aamva-pdf417-'+selectedState+'.png';
+  a.click();
+  showToast('Downloaded aamva-pdf417-'+selectedState+'.png', 'success');
+}
+
+// ── Reset ──────────────────────────────────────────────────────────────
+function resetAll(){
+  selectedState = null;
+  generatedPayload = null;
+  document.getElementById('aamvaForm').reset();
+  document.querySelectorAll('.state-btn').forEach(function(b){ b.classList.remove('selected'); });
+  document.getElementById('step1Next').disabled = true;
+  document.getElementById('valSummary').classList.remove('show');
+  goStep(1);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+var _toastTimer;
+function showToast(msg, type){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type||'');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){
+    t.classList.remove('show');
+  }, 3200);
+}
+</script>
+</body>
+</html>
