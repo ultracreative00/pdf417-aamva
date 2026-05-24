@@ -1,142 +1,260 @@
-## PDF417 HUB3 Barcode Generator
+# PDF417 AAMVA Generator
 
-This library provides you with the ability to generate PDF417 HUB3 Barcodes in browser or Node.js
-apps. The final barcode is drawn into a canvas element and can be used for many different use cases.
-The code is based on [pdf417-js](https://github.com/bkuzmic/pdf417-js).
+A browser-based **AAMVA-compliant PDF417 barcode generator** for US/Canada Driver Licenses and ID Cards. Built on top of [`pkoretic/pdf417-generator`](https://github.com/pkoretic/pdf417-generator), extended with a full AAMVA 2020 data encoder and a polished form UI.
 
+---
 
-### Browser
+## Features
 
-You can find a complete example at [examples/browser](examples/browser) and a running demo [here](https://pkoretic.github.io/pdf417-generator).
+- ✅ AAMVA 2020 standard (versions 07, 08, 09 selectable)
+- ✅ Full DL / ID field support — all mandatory + optional element IDs
+- ✅ PDF417 barcode rendered to `<canvas>` — **15 columns hardcoded** per AAMVA spec
+- ✅ Configurable Error Correction Level (ECL 2–5) and Aspect Ratio
+- ✅ One-click PNG download with white background
+- ✅ Raw AAMVA string viewer with copy button and control-char display
+- ✅ Dark / Light theme toggle
+- ✅ Zero dependencies beyond `lib/pdf417.js` — runs entirely in the browser
 
-The usage is as simple as providing a canvas element and a text that should be used for barcode generation:
+---
 
-```html
-<script src="https://cdn.jsdelivr.net/gh/pkoretic/pdf417-generator@master/lib/pdf417.js" type="text/javascript"></script>
+## Quick Start
+
+### Option 1 — Open directly in browser (no server needed)
+
+```bash
+# Clone the repo
+git clone https://github.com/ultracreative00/pdf417-aamva.git
+cd pdf417-aamva
+
+# Open the generator in your browser
+open examples/browser/generate.html
+# or on Linux:
+xdg-open examples/browser/generate.html
+# or on Windows:
+start examples/browser/generate.html
 ```
 
-**HTML**
+> **That's it.** No build step, no `npm install`, no server required.  
+> The page loads `lib/pdf417.js` via a relative path, so just open the file directly.
+
+---
+
+### Option 2 — Serve with a local HTTP server (recommended for development)
+
+If you prefer to use a local server (e.g., to avoid any browser file-path restrictions):
+
+**Using Python (built-in):**
+```bash
+cd pdf417-aamva
+python3 -m http.server 8080
+# Then open: http://localhost:8080/examples/browser/generate.html
+```
+
+**Using Node.js (`npx serve`):**
+```bash
+cd pdf417-aamva
+npx serve .
+# Then open: http://localhost:3000/examples/browser/generate.html
+```
+
+**Using VS Code Live Server:**
+1. Install the [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer)
+2. Right-click `examples/browser/generate.html` → **Open with Live Server**
+
+---
+
+## Using the Generator
+
+1. **Fill in the form** — required fields are marked with `*`
+2. **Select issuing state**, document type (DL or ID), and AAMVA version
+3. **Adjust barcode settings** (ECL, aspect ratio) in the right panel
+4. **Click "Generate Barcode"** — the PDF417 barcode renders instantly
+5. **Download PNG** — exports a clean white-background barcode image
+6. **View raw AAMVA string** — expand the collapsible panel to inspect or copy the encoded payload
+
+---
+
+## Form Fields Reference
+
+### Issuer Information
+
+| Field | Element ID | Required | Notes |
+|-------|-----------|----------|-------|
+| Issuing State | — | ✅ | Used in filename and header |
+| Document Type | — | ✅ | DL or ID |
+| AAMVA Version | — | ✅ | 07 / 08 / 09 |
+| Issuer ID Number | IIN | ✅ | 6-digit AAMVA issuer code |
+
+### Name
+
+| Field | Element ID | Required |
+|-------|-----------|----------|
+| Last Name | DCS | ✅ |
+| First Name | DAC | ✅ |
+| Middle Name | DAD | — |
+| Name Suffix | DCU | — |
+
+### Dates & Document Number
+
+| Field | Element ID | Required | Format |
+|-------|-----------|----------|--------|
+| DL / ID Number | DAQ | ✅ | Alphanumeric |
+| Date of Birth | DBB | ✅ | MMDDYYYY (auto-formatted) |
+| Issue Date | DBD | ✅ | MMDDYYYY |
+| Expiry Date | DBA | ✅ | MMDDYYYY |
+
+### Physical Description
+
+| Field | Element ID | Required |
+|-------|-----------|----------|
+| Sex | DBC | ✅ |
+| Eye Color | DAY | — |
+| Hair Color | DAZ | — |
+| Height | DAU | — |
+| Weight (lbs) | DAW | — |
+
+### Address
+
+| Field | Element ID | Required |
+|-------|-----------|----------|
+| Street Address 1 | DAG | ✅ |
+| Street Address 2 | DAH | — |
+| City | DAI | ✅ |
+| State Abbreviation | DAJ | ✅ |
+| Postal Code | DAK | ✅ |
+| Country | DCG | — |
+
+### Optional Fields
+
+| Field | Element ID |
+|-------|-----------|
+| Race / Ethnicity | DCL |
+| Organ Donor | DDK |
+| Veteran | DDL |
+| Under 18 Until | DDH |
+| Under 21 Until | DDI |
+| Limited Duration | DDD |
+
+---
+
+## Barcode Settings
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Error Correction Level | ECL 4 | AAMVA recommends ECL 3–5 |
+| Aspect Ratio | 2.0 | Width-to-height ratio of the symbol |
+| Columns | **15** | Hardcoded — AAMVA standard requirement |
+
+---
+
+## AAMVA String Format
+
+The encoder builds a standards-compliant AAMVA string with the following structure:
+
+```
+@ LF RS CR ANSI {IIN}{AAMVA_VER}{JURIS_VER}{NUM_SUBFILES}{SUBFILE_TYPE}{OFFSET}{LENGTH}
+{SUBFILE_TYPE}
+{ELEMENT_ID}{VALUE} LF
+{ELEMENT_ID}{VALUE} LF
+...
+```
+
+**Control characters rendered in the Raw String viewer:**
+
+| Symbol | Meaning | Hex |
+|--------|---------|-----|
+| `[←RS]` | Record Separator | `0x1E` |
+| `[↵CR]` | Carriage Return | `0x0D` |
+| `[↴LF]` | Line Feed | `0x0A` |
+
+---
+
+## Project Structure
+
+```
+pdf417-aamva/
+├── lib/
+│   └── pdf417.js              # PDF417 barcode engine (unchanged from upstream)
+├── examples/
+│   ├── browser/
+│   │   ├── generate.html      # ← AAMVA Generator UI (main app)
+│   │   ├── index.html         # Original HUB3 browser example
+│   │   └── main.css           # Base styles
+│   └── node/
+│       ├── simple.js          # Node.js usage example
+│       └── package.json
+├── package.json
+├── LICENSE
+└── README.md
+```
+
+---
+
+## `PDF417.draw()` API
+
+The underlying `PDF417.draw()` function accepts the following arguments:
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `code` | `string` | — | The encoded string to draw |
+| `canvas` | `Canvas` | — | HTML Canvas element |
+| `aspectRatio` | `float` | `2` | Width-to-height ratio of the symbol |
+| `ecl` | `int` | `-1` | Error correction level (0–8). `-1` = automatic |
+| `columns` | `int` | auto | Number of data columns (AAMVA uses **15**) |
+| `devicePixelRatio` | `int` | `window.devicePixelRatio` | Extra pixel density for retina |
+
+> `draw()` throws an `Error` if the input exceeds PDF417's maximum capacity (~1850 text characters or 1108 bytes).
+
+---
+
+## Browser Usage (Custom Integration)
+
 ```html
+<script src="lib/pdf417.js"></script>
 <canvas id="barcode"></canvas>
+
+<script>
+  const aamvaString = /* your encoded AAMVA payload */;
+  const canvas = document.getElementById('barcode');
+
+  PDF417.draw(
+    aamvaString,  // encoded string
+    canvas,       // canvas element
+    2.0,          // aspect ratio
+    4,            // ECL 4
+    15,           // 15 columns (AAMVA hardcoded)
+    0             // devicePixelRatio override (0 = use window default)
+  );
+</script>
 ```
 
-**JS**
-```js
-var code = HUB3.format({
-    amount: 12355,                        // amount in euro cents
-    sender: {
-        name: "PETAR KORETIĆ",
-        street: "PREVOJ DD",
-        city: "10000 Zagreb"
-    },
-    receiver: {
-        name: "pkoretic J.D.O.O",
-        street: "PREVOJ DD",
-        city: "10000 ZAGREB",
-        iban: "HR1210010051863000160",
-        model: "HR01",
-        reference: "7336-68949637625-00001"
-    },
-    purpose: "COST",
-    description: "Uplata za 1. mjesec"
-})
+---
 
-var canvas = document.getElementById("barcode")
-PDF417.draw(code, canvas)
+## Node.js Usage
+
+Requires Node.js 18.12+ and [`node-canvas`](https://github.com/Automattic/node-canvas).
+
+```bash
+npm install
 ```
-
-### Node.js
-
-You can find a complete example at [examples/node](examples/node).
-
-The [node-canvas](https://github.com/Automattic/node-canvas) library is used for drawing. Requires Node.js 18.12+ or 20.9+.
-
-Install the library:
-
-```
-npm install pdf417-generator
-```
-
-Use it as:
 
 ```js
-const { createCanvas } = require("canvas")
-const { PDF417, HUB3 } = require("pdf417-generator")
+const { createCanvas } = require('canvas');
+const PDF417 = require('../../lib/pdf417.js');
 
-const code = HUB3.format({
-    amount: 12355,                        // amount in euro cents
-    sender: {
-        name: "PETAR KORETIĆ",
-        street: "PREVOJ DD",
-        city: "10000 Zagreb"
-    },
-    receiver: {
-        name: "FIRMA J.D.O.O",
-        street: "PREVOJ DD",
-        city: "10000 ZAGREB",
-        iban: "HR1210010051863000160",
-        model: "HR01",
-        reference: "7336-68949637625-00001"
-    },
-    purpose: "COST",
-    description: "Uplata za 1. mjesec"
-})
+const canvas = createCanvas(1, 1);
+PDF417.draw(aamvaString, canvas, 2.0, 4, 15, 0);
 
-const canvas = createCanvas(1, 1)
-PDF417.draw(code, canvas)
-
-// create an image which can be sent in an e-mail or similar
-console.log(`<img src="${canvas.toDataURL()}" />`)
+// Export as PNG
+const fs = require('fs');
+const buffer = canvas.toBuffer('image/png');
+fs.writeFileSync('aamva-barcode.png', buffer);
 ```
 
+---
 
-### TypeScript
-```ts
-import { PDF417, HUB3 } from 'pdf417-generator';
+## License
 
-PDF417.draw(code, canvas);
-```
+MIT — see [LICENSE](LICENSE).
 
-
-### draw arguments
-
-**code** - (string) code to encode as PDF417
-
-**canvas** - (Canvas) Canvas instance
-
-**aspectRatio** - (float) the width to height of the symbol (excluding quiet zones); default 2
-
-**ecl** - (int) error correction level (0-8); default -1 = automatic correction level
-
-**devicePixelRatio** - (int) extra pixel density for sharp rendering on retina screens; default `window.devicePixelRatio` if available
-
-`draw()` throws an `Error` if the input exceeds PDF417's maximum capacity (925 data codewords, roughly 1850 text characters or 1108 bytes).
-
-
-### HUB3.format arguments
-
-`HUB3.format(options)` builds and validates a HUB-3A (HRVHUB30) payment slip string ready to pass to `PDF417.draw()`.
-
-**amount** - (int) payment amount in euro cents (e.g. `12355` = 123.55 EUR)
-
-**sender.name** - (string) payer name, max 30 chars
-
-**sender.street** - (string) payer street, max 27 chars
-
-**sender.city** - (string) payer city, max 27 chars
-
-**receiver.name** - (string) recipient name, max 25 chars
-
-**receiver.street** - (string) recipient street, max 25 chars
-
-**receiver.city** - (string) recipient city, max 27 chars
-
-**receiver.iban** - (string) recipient IBAN, must be 21 chars starting with `HR`
-
-**receiver.model** - (string) payment model, e.g. `HR01`
-
-**receiver.reference** - (string) payment reference
-
-**purpose** - (string) 4-letter purpose code (e.g. `COST`)
-
-**description** - (string) payment description, max 35 chars
+Based on [pkoretic/pdf417-generator](https://github.com/pkoretic/pdf417-generator), which is in turn based on [pdf417-js](https://github.com/bkuzmic/pdf417-js).
