@@ -224,6 +224,32 @@ select option{background:var(--surface);color:var(--text)}
 .badge-teal{background:var(--primary-ring);color:var(--primary)}
 .badge-gray{background:var(--divider);color:var(--muted)}
 
+/* ── Barcode settings row ───────────────────────────────────────────── */
+.barcode-settings{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:.75rem;
+  padding:1rem;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  margin-bottom:1.25rem;
+}
+.barcode-settings .field-group label{font-size:.72rem}
+.barcode-settings select,
+.barcode-settings input[type=range]{background:var(--surface)}
+/* range slider */
+input[type=range]{
+  width:100%;height:4px;
+  -webkit-appearance:none;appearance:none;
+  border:none;border-radius:99px;
+  background:var(--border);
+  padding:0;
+  cursor:pointer;
+  accent-color:var(--primary);
+}
+input[type=range]:focus{outline:none;box-shadow:0 0 0 3px var(--primary-ring)}
+
 /* ── Preview step ──────────────────────────────────────────────────── */
 .preview-layout{
   display:grid;
@@ -234,12 +260,21 @@ select option{background:var(--surface);color:var(--text)}
 @media(max-width:640px){.preview-layout{grid-template-columns:1fr}}
 
 .barcode-wrap{
-  background:var(--surface-2);border:1px solid var(--border);
+  background:#fff;
+  border:1px solid var(--border);
   border-radius:var(--radius-lg);
   padding:1rem;
   display:flex;flex-direction:column;align-items:center;gap:.75rem;
+  min-width:200px;
 }
-.barcode-wrap canvas{display:block;max-width:100%}
+/* always white bg for barcode contrast */
+[data-theme="dark"] .barcode-wrap{background:#fff}
+.barcode-wrap canvas{display:block;max-width:340px;width:100%;image-rendering:pixelated}
+
+.barcode-meta{
+  font-size:.7rem;color:var(--faint);text-align:center;
+  font-variant-numeric:tabular-nums;
+}
 
 .dl-table{
   width:100%;
@@ -260,17 +295,71 @@ select option{background:var(--surface);color:var(--text)}
 }
 .dl-table tr:last-child td{border-bottom:none}
 
+/* ── Raw AAMVA collapsible ─────────────────────────────────────────── */
+.raw-toggle{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.65rem .9rem;
+  margin-top:1.25rem;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  cursor:pointer;
+  font-size:.8rem;font-weight:600;color:var(--muted);
+  transition:background var(--t),color var(--t);
+}
+.raw-toggle:hover{background:var(--surface);color:var(--text)}
+.raw-toggle .arrow{
+  transition:transform .25s ease;
+  flex-shrink:0;
+}
+.raw-toggle.open .arrow{transform:rotate(180deg)}
+.raw-panel{
+  display:none;
+  margin-top:.35rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+}
+.raw-panel.open{display:block}
+
+.raw-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.5rem .85rem;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+}
+.raw-toolbar span{font-size:.72rem;color:var(--faint)}
+.raw-copy-btn{
+  font-size:.72rem;font-weight:600;color:var(--primary);
+  background:none;border:none;cursor:pointer;padding:.2rem .5rem;
+  border-radius:var(--radius-sm);
+  transition:background var(--t);
+}
+.raw-copy-btn:hover{background:var(--primary-ring)}
+
 .raw-output{
   font-family:'JetBrains Mono','Fira Code',monospace;
-  font-size:.72rem;line-height:1.55;
-  background:var(--surface-2);border:1px solid var(--border);
-  border-radius:var(--radius-md);
+  font-size:.72rem;line-height:1.6;
+  background:var(--surface);
   padding:.85rem 1rem;
   white-space:pre-wrap;word-break:break-all;
   color:var(--muted);
-  max-height:220px;overflow-y:auto;
-  margin-top:.75rem;
+  max-height:260px;overflow-y:auto;
 }
+/* Highlight control chars */
+.raw-output .ctrl{color:var(--primary);opacity:.7;font-style:italic}
+
+/* ── Encode status badge ───────────────────────────────────────────── */
+.encode-status{
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.3rem .7rem;
+  border-radius:var(--radius-full,9999px);
+  font-size:.72rem;font-weight:600;
+  letter-spacing:.03em;
+}
+.encode-status.ok{background:var(--success-bg);color:var(--success)}
+.encode-status.err{background:var(--error-bg);color:var(--error)}
 
 /* ── Toast ─────────────────────────────────────────────────────────── */
 .toast{
@@ -320,6 +409,7 @@ select option{background:var(--surface);color:var(--text)}
   .form-grid{grid-template-columns:1fr}
   .field-full,.form-grid [class~=field-full]{grid-column:1/-1}
   .steps .step-label{display:none}
+  .barcode-settings{grid-template-columns:1fr 1fr}
 }
 
 /* ── Transition panels ─────────────────────────────────────────────── */
@@ -692,8 +782,16 @@ select{
   <!-- ── STEP 3: Preview ───────────────────────────────────────────── -->
   <div class="panel" id="panel-3">
     <div class="card">
+
+      <!-- Header row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem">
-        <h2>Preview &amp; Download</h2>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <h2>Preview &amp; Download</h2>
+          <span class="encode-status ok" id="encodeStatus">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Encoded
+          </span>
+        </div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-ghost btn-sm" onclick="goStep(2)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -706,10 +804,38 @@ select{
         </div>
       </div>
 
+      <!-- Barcode settings (Phase 4) -->
+      <div class="barcode-settings">
+        <div class="field-group">
+          <label for="bsECL">Error Correction Level</label>
+          <select id="bsECL" onchange="regenerateBarcode()">
+            <option value="2">ECL 2 — Minimal (8 codewords)</option>
+            <option value="3">ECL 3 — Low (16 codewords)</option>
+            <option value="4" selected>ECL 4 — Standard (32 codewords)</option>
+            <option value="5">ECL 5 — High (64 codewords)</option>
+          </select>
+          <span class="help-text">AAMVA recommends ECL 3–5</span>
+        </div>
+        <div class="field-group">
+          <label for="bsAspect">Aspect Ratio: <strong id="bsAspectVal">2.0</strong></label>
+          <input type="range" id="bsAspect" min="1" max="5" step="0.5" value="2"
+                 oninput="document.getElementById('bsAspectVal').textContent=parseFloat(this.value).toFixed(1); regenerateBarcode()" />
+          <span class="help-text">Width-to-height ratio of the barcode</span>
+        </div>
+        <div class="field-group" style="align-self:end">
+          <label>&nbsp;</label>
+          <div style="font-size:.72rem;color:var(--faint);line-height:1.5">
+            Columns: <strong style="color:var(--text)">15</strong> (hardcoded)<br>
+            Standard: <strong style="color:var(--text)">PDF417 AAMVA</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview layout -->
       <div class="preview-layout">
         <div class="barcode-wrap">
-          <canvas id="barcodeCanvas"></canvas>
-          <span style="font-size:.7rem;color:var(--faint);text-align:center" id="barcodeInfo"></span>
+          <canvas id="barcodeCanvas" aria-label="PDF417 barcode"></canvas>
+          <div class="barcode-meta" id="barcodeInfo">—</div>
         </div>
         <div>
           <h3 style="margin-bottom:.75rem">Field Summary</h3>
@@ -717,11 +843,27 @@ select{
         </div>
       </div>
 
-      <details style="margin-top:1.25rem">
-        <summary style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);user-select:none">Raw Barcode String (debug)</summary>
-        <div class="raw-output" id="rawOutput"></div>
-      </details>
-    </div>
+      <!-- Raw AAMVA string — collapsible (Phase 4) -->
+      <button class="raw-toggle" id="rawToggle" onclick="toggleRaw()" aria-expanded="false" aria-controls="rawPanel">
+        <span style="display:flex;align-items:center;gap:.5rem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Raw AAMVA String
+          <span class="badge badge-gray" id="rawByteCount">0 bytes</span>
+        </span>
+        <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="raw-panel" id="rawPanel" role="region" aria-labelledby="rawToggle">
+        <div class="raw-toolbar">
+          <span id="rawLengthInfo">0 chars · 0 data elements</span>
+          <button class="raw-copy-btn" onclick="copyRaw()" title="Copy raw string to clipboard">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+        <pre class="raw-output" id="rawOutput" role="textbox" aria-readonly="true" aria-label="Raw AAMVA barcode string"></pre>
+      </div>
+
+    </div><!-- /card -->
 
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="resetAll()">
@@ -760,8 +902,18 @@ select{
 })();
 
 // ── State ──────────────────────────────────────────────────────────────
-var selectedState = null;
+var selectedState    = null;
 var generatedPayload = null;
+
+// ── PDF417 draw params (Phase 4) — columns hardcoded to 15 ────────────
+var BARCODE_COLUMNS = 15;
+
+function getBarcodeECL(){
+  return parseInt(document.getElementById('bsECL').value, 10);
+}
+function getBarcodeAspect(){
+  return parseFloat(document.getElementById('bsAspect').value);
+}
 
 // ── Build state grid ───────────────────────────────────────────────────
 (function buildStateGrid(){
@@ -816,8 +968,6 @@ function onEnterStep2(){
       revSel.appendChild(o);
     });
     revWrap.style.display = 'block';
-    // set DDB
-    document.getElementById('f_DDB') && (document.getElementById('f_DDB').value = revs[0].date);
     setDateField('f_DDB', revs[0].date);
   } else {
     revWrap.style.display = 'none';
@@ -828,11 +978,10 @@ function onEnterStep2(){
   if(!dlField.value) dlField.value = generateDLNumber(selectedState);
 
   // auto-fill DCF & DCK
-  var cfg2 = getStateConfig(selectedState);
   var dcfField = document.getElementById('f_DCF');
   var dckField = document.getElementById('f_DCK');
   if(!dcfField.value) dcfField.value = generateDCF(selectedState);
-  if(!dckField.value) dckField.value = generateICN(selectedState, dlField.value, cfg2.iin);
+  if(!dckField.value) dckField.value = generateICN(selectedState, dlField.value, cfg.iin);
 
   // default dates
   if(!document.getElementById('f_DBD').value) setDateField('f_DBD', formatToday());
@@ -893,16 +1042,14 @@ function collectFormData(){
   document.querySelectorAll('#aamvaForm input, #aamvaForm select').forEach(function(el){
     if(el.name) data[el.name] = el.value.trim();
   });
-  // DDB from revision selector
   var revSel = document.getElementById('revisionSelect');
   if(revSel && revSel.value) data.DDB = revSel.value;
-  data.DAJ = selectedState; // jurisdiction = issuing state
+  data.DAJ = selectedState;
   return data;
 }
 
 // ── Validation ─────────────────────────────────────────────────────────
 function showValidationErrors(errors){
-  // clear previous
   document.querySelectorAll('.error-field').forEach(function(el){ el.classList.remove('error-field'); });
   document.querySelectorAll('.field-error').forEach(function(el){ el.remove(); });
 
@@ -949,6 +1096,42 @@ function handleGenerate(){
   }
 }
 
+// ── Regenerate barcode with new ECL / aspect (Phase 4) ────────────────
+function regenerateBarcode(){
+  if(!generatedPayload) return;
+  drawBarcode(generatedPayload);
+}
+
+// ── Core draw wrapper — columns=15, aspect + ECL from controls ─────────
+function drawBarcode(payload){
+  var canvas  = document.getElementById('barcodeCanvas');
+  var ecl     = getBarcodeECL();
+  var aspect  = getBarcodeAspect();
+
+  try {
+    // PDF417.draw(text, canvas, aspectRatio, securityLevel, columns, rows)
+    // columns=15 hardcoded; rows=0 means auto
+    PDF417.draw(payload, canvas, aspect, ecl, BARCODE_COLUMNS, 0);
+
+    // update meta
+    document.getElementById('barcodeInfo').textContent =
+      canvas.width + ' × ' + canvas.height + ' px  ·  ' +
+      BARCODE_COLUMNS + ' cols  ·  ECL ' + ecl + '  ·  PDF417';
+
+    // status badge
+    var badge = document.getElementById('encodeStatus');
+    badge.className = 'encode-status ok';
+    badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Encoded';
+
+  } catch(ex) {
+    var badge = document.getElementById('encodeStatus');
+    badge.className = 'encode-status err';
+    badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Error';
+    showToast('Draw error: ' + ex.message, 'error');
+    console.error('PDF417.draw error', ex);
+  }
+}
+
 // ── Render preview ─────────────────────────────────────────────────────
 var FIELD_LABELS = {
   DAQ:'License #', DCS:'Last Name', DAC:'First Name', DAD:'Middle Name',
@@ -961,13 +1144,10 @@ var FIELD_LABELS = {
 var SEX_MAP  = {'1':'Male','2':'Female','9':'Not Specified'};
 
 function renderPreview(data, payload){
-  // barcode
-  var canvas = document.getElementById('barcodeCanvas');
-  PDF417.draw(payload, canvas);
-  document.getElementById('barcodeInfo').textContent =
-    canvas.width + ' × ' + canvas.height + ' px · PDF417';
+  // ── Barcode (Phase 4 draw call) ────────────────────────────────────
+  drawBarcode(payload);
 
-  // table
+  // ── Field summary table ────────────────────────────────────────────
   var tbody = document.querySelector('#dlTable tbody');
   tbody.innerHTML = '';
   var shown = ['DAQ','DCS','DAC','DAD','DBB','DBC','DAY','DAZ','DAU','DAW',
@@ -983,36 +1163,110 @@ function renderPreview(data, payload){
     tbody.appendChild(tr);
   });
 
-  // raw output — replace control chars for readability
-  var safe = payload
-    .replace(/\x1E/g, '<RS>')
-    .replace(/\x0D/g, '<CR>')
-    .replace(/\x0A/g, '<LF>\n');
-  document.getElementById('rawOutput').textContent = safe;
+  // ── Raw AAMVA string (Phase 4) ─────────────────────────────────────
+  renderRawString(payload);
+}
+
+// ── Render raw AAMVA string with highlighted control chars ─────────────
+function renderRawString(payload){
+  // byte count (UTF-8 approximate — AAMVA is ASCII)
+  var bytes = payload.length;
+  document.getElementById('rawByteCount').textContent = bytes + ' bytes';
+
+  // count data elements (lines starting with D-code pattern)
+  var elementMatches = payload.match(/\bD[A-Z]{2}/g);
+  var elementCount = elementMatches ? elementMatches.length : 0;
+
+  document.getElementById('rawLengthInfo').textContent =
+    bytes + ' chars · ' + elementCount + ' data elements';
+
+  // pretty-print control characters
+  var pretty = payload
+    .replace(/\x1E/g,  '[\u2190RS]')   // Record Separator
+    .replace(/\x0D/g,  '[\u21B5CR]\n') // Carriage Return → newline for readability
+    .replace(/\x0A/g,  '[\u21B4LF]\n') // Line Feed
+    .replace(/\x1C/g,  '[\u2190FS]')   // Field Separator (some states)
+    .replace(/\x40/g, '@');             // @ passthrough
+
+  document.getElementById('rawOutput').textContent = pretty;
+}
+
+// ── Collapsible raw panel ──────────────────────────────────────────────
+function toggleRaw(){
+  var btn   = document.getElementById('rawToggle');
+  var panel = document.getElementById('rawPanel');
+  var open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+// ── Copy raw to clipboard ──────────────────────────────────────────────
+function copyRaw(){
+  if(!generatedPayload){
+    showToast('No barcode generated yet.', 'error');
+    return;
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(generatedPayload).then(function(){
+      showToast('Raw AAMVA string copied to clipboard.', 'success');
+    }).catch(function(){
+      fallbackCopy(generatedPayload);
+    });
+  } else {
+    fallbackCopy(generatedPayload);
+  }
+}
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showToast('Copied to clipboard.', 'success'); }
+  catch(e){ showToast('Copy failed — select text manually.', 'error'); }
+  document.body.removeChild(ta);
 }
 
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Download ───────────────────────────────────────────────────────────
+// ── Download PNG ───────────────────────────────────────────────────────
 function downloadPNG(){
   var canvas = document.getElementById('barcodeCanvas');
+  if(canvas.width === 0 || canvas.height === 0){
+    showToast('Barcode not ready yet.', 'error');
+    return;
+  }
+
+  // create white-bg offscreen canvas for guaranteed clean PNG
+  var off = document.createElement('canvas');
+  off.width  = canvas.width;
+  off.height = canvas.height;
+  var ctx = off.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(canvas, 0, 0);
+
   var a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'aamva-pdf417-'+selectedState+'.png';
+  a.href     = off.toDataURL('image/png');
+  a.download = 'aamva-pdf417-' + (selectedState||'XX') + '.png';
   a.click();
-  showToast('Downloaded aamva-pdf417-'+selectedState+'.png', 'success');
+  showToast('Downloaded aamva-pdf417-' + (selectedState||'XX') + '.png', 'success');
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────
 function resetAll(){
-  selectedState = null;
+  selectedState    = null;
   generatedPayload = null;
   document.getElementById('aamvaForm').reset();
   document.querySelectorAll('.state-btn').forEach(function(b){ b.classList.remove('selected'); });
   document.getElementById('step1Next').disabled = true;
   document.getElementById('valSummary').classList.remove('show');
+  // collapse raw panel
+  document.getElementById('rawPanel').classList.remove('open');
+  document.getElementById('rawToggle').classList.remove('open');
+  document.getElementById('rawToggle').setAttribute('aria-expanded','false');
   goStep(1);
 }
 
