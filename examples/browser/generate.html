@@ -332,6 +332,33 @@ a,button,[role="button"],input,select,textarea{
   padding:0 var(--space-3);
 }
 
+/* AR number input override */
+.ar-input-wrap{
+  display:flex;align-items:center;gap:var(--space-2);
+  margin-top:var(--space-1);
+}
+.ar-input-wrap input[type=range]{flex:1;margin-top:0;}
+.ar-number-input{
+  width:58px;
+  height:28px;
+  padding:0 var(--space-2);
+  background:var(--color-surface-2);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-sm);
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--color-primary);
+  text-align:center;
+  -moz-appearance:textfield;
+}
+.ar-number-input::-webkit-outer-spin-button,
+.ar-number-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.ar-number-input:focus{
+  border-color:var(--color-primary);
+  outline:none;
+  box-shadow:0 0 0 2px color-mix(in oklch,var(--color-primary) 18%,transparent);
+}
+
 .barcode-wrap{
   padding:var(--space-5);
   display:flex;flex-direction:column;align-items:center;gap:var(--space-3);
@@ -822,25 +849,34 @@ a,button,[role="button"],input,select,textarea{
       </div>
 
       <div class="barcode-settings">
+
+        <!-- ECL: now 0–5 -->
         <div class="setting-field">
           <div class="setting-label">
             Error Correction
-            <span class="setting-val" id="eclVal">ECL 4</span>
+            <span class="setting-val" id="eclVal">ECL 2</span>
           </div>
           <select id="sECL">
-            <option value="2">ECL 2 — 13 codewords</option>
-            <option value="3">ECL 3 — 22 codewords</option>
-            <option value="4" selected>ECL 4 — 32 codewords</option>
+            <option value="0">ECL 0 — 2 codewords</option>
+            <option value="1">ECL 1 — 4 codewords</option>
+            <option value="2" selected>ECL 2 — 8 codewords</option>
+            <option value="3">ECL 3 — 16 codewords</option>
+            <option value="4">ECL 4 — 32 codewords</option>
             <option value="5">ECL 5 — 64 codewords</option>
           </select>
         </div>
+
+        <!-- Aspect Ratio: slider 1.0–20.0 + direct number input -->
         <div class="setting-field">
-          <div class="setting-label">
-            Aspect Ratio
-            <span class="setting-val" id="arVal">2.0</span>
+          <div class="setting-label">Aspect Ratio</div>
+          <div class="ar-input-wrap">
+            <input type="range" id="sAR" min="1" max="20" step="0.5" value="2">
+            <input type="number" id="sARNum" class="ar-number-input"
+                   min="0.1" max="50" step="0.1" value="2.0"
+                   title="Type any value 0.1 – 50">
           </div>
-          <input type="range" id="sAR" min="1" max="5" step="0.5" value="2">
         </div>
+
         <div class="setting-field">
           <div class="setting-label">Columns</div>
           <div class="setting-fixed">15 (hardcoded)</div>
@@ -909,77 +945,71 @@ a,button,[role="button"],input,select,textarea{
   });
 })();
 
-// ===== SETTINGS LIVE LABELS =====
-const sECL=document.getElementById('sECL');
-const sAR=document.getElementById('sAR');
-sECL.addEventListener('change',()=>{
-  document.getElementById('eclVal').textContent='ECL '+sECL.value;
-  if(lastPayload) regenerateBarcode();
+// ===== ASPECT RATIO — dual slider + number input =====
+const sAR    = document.getElementById('sAR');
+const sARNum = document.getElementById('sARNum');
+
+function getAR() {
+  const v = parseFloat(sARNum.value);
+  return isNaN(v) || v <= 0 ? 2.0 : Math.round(v * 10) / 10;
+}
+
+sAR.addEventListener('input', () => {
+  const v = parseFloat(sAR.value);
+  sARNum.value = v.toFixed(1);
+  if (lastPayload) regenerateBarcode();
 });
-sAR.addEventListener('input',()=>{
-  document.getElementById('arVal').textContent=parseFloat(sAR.value).toFixed(1);
-  if(lastPayload) regenerateBarcode();
+
+sARNum.addEventListener('input', () => {
+  const v = getAR();
+  // keep slider in sync when within range
+  if (v >= 1 && v <= 20) sAR.value = v;
+  if (lastPayload) regenerateBarcode();
+});
+sARNum.addEventListener('change', () => {
+  // clamp to a reasonable max on blur
+  const v = getAR();
+  sARNum.value = v.toFixed(1);
+  if (v >= 1 && v <= 20) sAR.value = v;
+  if (lastPayload) regenerateBarcode();
+});
+
+// ===== ECL SELECT =====
+const sECL = document.getElementById('sECL');
+sECL.addEventListener('change', () => {
+  document.getElementById('eclVal').textContent = 'ECL ' + sECL.value;
+  if (lastPayload) regenerateBarcode();
 });
 
 // ===== AAMVA ENCODER =====
-function pad(str,len,ch=' '){return String(str).padEnd(len,ch).slice(0,len);}
 function fmtDate(val){
-  // input: yyyy-mm-dd  → output: MMDDYYYY
   if(!val)return null;
   const [y,m,d]=val.split('-');
   return m+d+y;
 }
 function buildAAMVA(){
   const g=id=>document.getElementById(id).value.trim();
-  const gs=id=>document.getElementById(id);
-
-  // Mandatory fields
   const state   = g('fIssuerState');
   const docType = g('fDocType');
   const ver     = g('fAamvaVer');
   const iin     = g('fIIN').padEnd(6,'0').slice(0,6);
-  const dcs     = g('fDCS');  // last
-  const dac     = g('fDAC');  // first
-  const dad     = g('fDAD');  // middle
-  const dcu     = g('fDCU');  // suffix
-  const daq     = g('fDAQ');  // dl number
-  const dbb     = fmtDate(g('fDBB'));  // dob
-  const dbd     = fmtDate(g('fDBD'));  // issue
-  const dba     = fmtDate(g('fDBA'));  // expiry
-  const dbc     = g('fDBC');  // sex
-  const day     = g('fDAY');  // eye
-  const daz     = g('fDAZ');  // hair
-  const dau     = g('fDAU');  // height
-  const daw     = g('fDAW');  // weight
-  const dag     = g('fDAG');  // street1
-  const dah     = g('fDAH');  // street2
-  const dai     = g('fDAI');  // city
-  const daj     = g('fDAJ').toUpperCase();  // state abbrev
-  const dak     = g('fDAK').replace(/\D/g,'').padEnd(9,'0').slice(0,9);
-  const dcg     = g('fDCG');  // country
-  // Optional
-  const dcl     = g('fDCL');
-  const ddk     = g('fDDK');
-  const ddl     = g('fDDL');
-  const ddh     = fmtDate(g('fDDH'));
-  const ddi     = fmtDate(g('fDDI'));
-  const ddd     = g('fDDD');
+  const dcs=g('fDCS'),dac=g('fDAC'),dad=g('fDAD'),dcu=g('fDCU');
+  const daq=g('fDAQ');
+  const dbb=fmtDate(g('fDBB')),dbd=fmtDate(g('fDBD')),dba=fmtDate(g('fDBA'));
+  const dbc=g('fDBC'),day=g('fDAY'),daz=g('fDAZ'),dau=g('fDAU'),daw=g('fDAW');
+  const dag=g('fDAG'),dah=g('fDAH'),dai=g('fDAI');
+  const daj=g('fDAJ').toUpperCase();
+  const dak=g('fDAK').replace(/\D/g,'').padEnd(9,'0').slice(0,9);
+  const dcg=g('fDCG');
+  const dcl=g('fDCL'),ddk=g('fDDK'),ddl=g('fDDL');
+  const ddh=fmtDate(g('fDDH')),ddi=fmtDate(g('fDDI')),ddd=g('fDDD');
 
   if(!state||!dcs||!dac||!daq||!dbb||!dbd||!dba||!dbc||!dag||!dai||!daj||!dak){
     throw new Error('Please fill all required fields (marked with *).');
   }
 
-  // Control chars
-  const RS  = '\x1e';  // Record Separator
-  const GS  = '\x1d';  // Group Separator (not used in subfile but kept for clarity)
-  const LF  = '\x0a';  // Line Feed (element terminator in some versions)
-  const CR  = '\x0d';  // Carriage Return
-  const SUB = '@';      // Subfile designator prefix
-
-  // Build subfile data elements (each ends with CR LF in AAMVA)
-  let elements = [];
-
-  // Mandatory
+  const RS='\x1e', LF='\x0a', CR='\x0d';
+  let elements=[];
   elements.push('DCS'+dcs);
   elements.push('DAC'+dac);
   if(dad) elements.push('DAD'+dad);
@@ -999,42 +1029,26 @@ function buildAAMVA(){
   elements.push('DAJ'+daj);
   elements.push('DAK'+dak);
   elements.push('DCG'+dcg);
-  // Optional
   if(dcl) elements.push('DCL'+dcl);
   if(ddk) elements.push('DDK'+ddk);
   if(ddl) elements.push('DDL'+ddl);
   if(ddh) elements.push('DDH'+ddh);
   if(ddi) elements.push('DDI'+ddi);
   if(ddd) elements.push('DDD'+ddd);
-  // DCF, DDE required by many states — add placeholders
   elements.push('DCF'+daq.slice(0,25));
-  elements.push('DDE'+'N');  // name truncation: N = not truncated
+  elements.push('DDEN');
 
   const elementData = elements.join('\n') + '\n';
-
-  // Subfile type + offset + length
-  const subfileType = docType;  // DL or ID
-  // Header is 21 bytes fixed
-  // Subfile header: 2 (type) + 4 (offset) + 4 (length) = 10 bytes per entry
-  // AAMVA header: @\n\x1e\rANSI + IIN(6) + AAMVA ver(2) + jurisdiction ver(2) + num subfiles(2) = 21 bytes
-  const headerLen = 21;
-  const subfileHeaderLen = 10;
-  const subfileOffset = headerLen + subfileHeaderLen;  // = 31
-  const subfileLength = elementData.length + 2;  // +2 for subfile type designation
+  const subfileType = docType;
+  const headerLen=21, subfileHeaderLen=10;
+  const subfileOffset = headerLen + subfileHeaderLen;
+  const subfileLength = elementData.length + 2;
   const offsetStr = String(subfileOffset).padStart(4,'0');
   const lengthStr = String(subfileLength).padStart(4,'0');
-
-  // AAMVA Header
-  // Format: @LF RS CR ANSI (space) IIN AAMVAVER JURISVER NUMSUBFILES
   const header = '@' + LF + RS + CR
-    + 'ANSI ' + iin
-    + ver  // AAMVA version (2 digits)
-    + '00'  // jurisdiction version
-    + '01'  // number of subfiles
+    + 'ANSI ' + iin + ver + '00' + '01'
     + subfileType + offsetStr + lengthStr;
-
-  const subfileData = subfileType + elementData;
-  return header + subfileData;
+  return header + subfileType + elementData;
 }
 
 // ===== BARCODE DRAW =====
@@ -1042,18 +1056,17 @@ let lastPayload = null;
 let lastState   = 'TX';
 
 function drawBarcode(payload, stateCode) {
-  const canvas   = document.getElementById('barcodeCanvas');
-  const ecl      = parseInt(sECL.value);
-  const ar       = parseFloat(sAR.value);
-  const COLS     = 15;  // hardcoded per AAMVA spec
-  const status   = document.getElementById('encodeStatus');
-
+  const canvas = document.getElementById('barcodeCanvas');
+  const ecl    = parseInt(sECL.value);
+  const ar     = getAR();
+  const COLS   = 15;
+  const status = document.getElementById('encodeStatus');
   try {
     PDF417.draw(payload, canvas, ar, ecl, COLS, 0);
     document.getElementById('barcodePlaceholder').style.display = 'none';
     canvas.style.display = 'block';
     document.getElementById('barcodeMeta').textContent =
-      canvas.width + ' × ' + canvas.height + ' px · ' + COLS + ' cols · ECL ' + ecl + ' · PDF417';
+      canvas.width + ' × ' + canvas.height + ' px · ' + COLS + ' cols · ECL ' + ecl + ' · AR ' + ar.toFixed(1) + ' · PDF417';
     status.textContent = '✓ Encoded';
     status.className   = 'encode-status visible ok';
     document.getElementById('btnDownload').disabled = false;
@@ -1075,13 +1088,9 @@ function regenerateBarcode() {
 function displayRaw(str) {
   const bytes = new TextEncoder().encode(str).length;
   document.getElementById('rawBytesBadge').textContent = bytes + ' bytes';
-
-  // Count data elements (lines with 3-char ID)
   const lines = str.split('\n').filter(l => /^[A-Z]{3}/.test(l));
   document.getElementById('rawStats').textContent =
     bytes + ' chars · ' + lines.length + ' data elements';
-
-  // Render with visible control chars
   const escaped = str
     .replace(/\x1e/g, '<span class="ctrl">[←RS]</span>')
     .replace(/\x0d/g, '<span class="ctrl">[↵CR]</span>')
@@ -1090,33 +1099,29 @@ function displayRaw(str) {
   document.getElementById('rawOutput').innerHTML = escaped;
 }
 
-// ===== GENERATE BUTTON =====
+// ===== GENERATE =====
 document.getElementById('btnGenerate').addEventListener('click', () => {
   try {
     const payload = buildAAMVA();
     const state   = document.getElementById('fIssuerState').value || 'XX';
     displayRaw(payload);
     drawBarcode(payload, state);
-  } catch(e) {
-    alert(e.message);
-  }
+  } catch(e) { alert(e.message); }
 });
 
 // ===== DOWNLOAD PNG =====
 document.getElementById('btnDownload').addEventListener('click', () => {
   const src = document.getElementById('barcodeCanvas');
   if(!src.width) return;
-  // Render to offscreen with white background
   const off = document.createElement('canvas');
-  off.width  = src.width;
-  off.height = src.height;
+  off.width = src.width; off.height = src.height;
   const ctx = off.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, off.width, off.height);
   ctx.drawImage(src, 0, 0);
   off.toBlob(blob => {
     const a = document.createElement('a');
-    a.href     = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(blob);
     a.download = 'aamva-pdf417-' + lastState + '.png';
     a.click();
     URL.revokeObjectURL(a.href);
@@ -1140,14 +1145,11 @@ document.getElementById('btnCopy').addEventListener('click', () => {
   const text = lastPayload || '';
   if(!text) return;
   if(navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => showCopied());
+    navigator.clipboard.writeText(text).then(showCopied);
   } else {
     const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
     showCopied();
   }
 });
@@ -1162,21 +1164,17 @@ function showCopied() {
 document.getElementById('btnReset').addEventListener('click', () => {
   document.querySelectorAll('input,select').forEach(el => {
     if(el.tagName==='SELECT') el.selectedIndex=0;
-    else if(el.type!=='range') el.value='';
+    else if(el.type!=='range'&&el.type!=='number') el.value='';
   });
-  // restore defaults
-  document.getElementById('fIIN').value    = '636000';
+  document.getElementById('fIIN').value     = '636000';
   document.getElementById('fAamvaVer').value = '09';
-  document.getElementById('fDCG').value    = 'USA';
-  document.getElementById('fDocType').value = 'DL';
-  sECL.value = '4';
-  sAR.value  = '2';
-  document.getElementById('eclVal').textContent = 'ECL 4';
-  document.getElementById('arVal').textContent  = '2.0';
+  document.getElementById('fDCG').value     = 'USA';
+  document.getElementById('fDocType').value  = 'DL';
+  sECL.value = '2';  sAR.value = '2';  sARNum.value = '2.0';
+  document.getElementById('eclVal').textContent = 'ECL 2';
   lastPayload = null;
   const canvas = document.getElementById('barcodeCanvas');
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
   canvas.style.display='none';
   document.getElementById('barcodePlaceholder').style.display='';
   document.getElementById('barcodeMeta').textContent='';
