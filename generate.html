@@ -47,29 +47,26 @@
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
+    /* ── ECL dropdown ── */
+    .ecl-select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent);
+      padding: 8px 10px;
+      font-size: 15px;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 0.15s;
+      cursor: pointer;
+    }
+    .ecl-select:focus { border-color: var(--accent); }
+
     /* ── Slider control ── */
     .slider-row { display: flex; align-items: center; gap: 10px; }
     .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
     .slider-val { min-width: 42px; text-align: right; font-size: 13px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-
-    /* ── ECL row: slider + number input ── */
-    .ecl-row { display: flex; align-items: center; gap: 10px; }
-    .ecl-row input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
-    .ecl-number {
-      width: 58px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--accent); padding: 5px 8px;
-      font-size: 14px; font-weight: 700; text-align: center;
-      outline: none; transition: border-color 0.15s;
-      font-variant-numeric: tabular-nums;
-    }
-    .ecl-number:focus { border-color: var(--accent); }
-    .ecl-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-    .ecl-preset {
-      padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border);
-      background: var(--surface2); color: var(--muted); font-size: 11px; font-weight: 600;
-      cursor: pointer; transition: all 0.12s;
-    }
-    .ecl-preset:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── Buttons ── */
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s, opacity 0.15s; }
@@ -91,7 +88,7 @@
 <body>
 
 <h1>PDF417 AAMVA Generator</h1>
-<p class="subtitle">Replica-quality barcode tuning — ECL 0–100 · Aspect Ratio 0.5–20.0 · Column control</p>
+<p class="subtitle">Replica-quality barcode tuning — ECL selector · Aspect Ratio 0.5–20.0 · Column control</p>
 
 <div class="layout">
 
@@ -189,28 +186,22 @@
       <div class="panel-header">Barcode Settings</div>
       <div class="panel-body">
 
-        <!-- ECL 0–100 -->
-        <div class="section-divider">Error Correction Level (ECL) — 0 to 100</div>
-        <div class="ecl-row">
-          <input type="range" id="eclSlider" min="0" max="100" step="1" value="2" oninput="syncECLFromSlider()" />
-          <input type="number" id="eclNumber" class="ecl-number" min="0" max="100" step="1" value="2" oninput="syncECLFromNumber()" onchange="syncECLFromNumber()" />
-        </div>
-        <!-- Quick preset buttons -->
-        <div class="ecl-presets">
-          <span style="font-size:11px;color:var(--muted);align-self:center;">Quick:</span>
-          <button class="ecl-preset" onclick="setECL(0)">0</button>
-          <button class="ecl-preset" onclick="setECL(1)">1</button>
-          <button class="ecl-preset" onclick="setECL(2)">2</button>
-          <button class="ecl-preset" onclick="setECL(3)">3</button>
-          <button class="ecl-preset" onclick="setECL(5)">5</button>
-          <button class="ecl-preset" onclick="setECL(10)">10</button>
-          <button class="ecl-preset" onclick="setECL(20)">20</button>
-          <button class="ecl-preset" onclick="setECL(50)">50</button>
-          <button class="ecl-preset" onclick="setECL(100)">100</button>
-        </div>
+        <!-- ECL Dropdown -->
+        <div class="section-divider">Error Correction Level (ECL)</div>
+        <label for="eclSelect">Select ECL:</label>
+        <select id="eclSelect" class="ecl-select" onchange="setECL(this.value)">
+          <option value="0">0 — Minimum (smallest barcode)</option>
+          <option value="1">1</option>
+          <option value="2">2 — Low</option>
+          <option value="3">3</option>
+          <option value="5" selected>5 — Standard</option>
+          <option value="10">10 — Medium</option>
+          <option value="20">20 — High</option>
+          <option value="50">50 — Very High</option>
+          <option value="100">100 — Maximum (largest barcode)</option>
+        </select>
         <p style="font-size:11px;color:var(--muted);margin-top:2px;">
-          Lower ECL = fewer error-correction codewords = denser data pattern. ECL 0–2 best matches real DL barcodes.
-          Drag the slider or type any value 0–100 directly.
+          Lower ECL = fewer error-correction codewords = denser / smaller barcode. Higher ECL = more redundancy = larger barcode.
         </p>
 
         <!-- Aspect Ratio -->
@@ -219,7 +210,7 @@
           <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="5.0" oninput="updateAR()" />
           <span class="slider-val" id="arVal">5.0</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode (more columns). Range 0.5–20.0 in 0.1 steps.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode (more columns). Range 0.5–20.0.</p>
 
         <!-- Columns Override -->
         <div class="section-divider" style="margin-top:8px;">Columns Override</div>
@@ -281,33 +272,14 @@
 
 <script>
   // ── State ──
-  var currentECL  = 2;
+  var currentECL  = 5;
   var currentAR   = 5.0;
   var currentCols = 0;
   var currentBW   = 2;
 
-  // ── ECL sync (slider ↔ number input) ──
-  function syncECLFromSlider() {
-    var val = parseInt(document.getElementById('eclSlider').value);
-    document.getElementById('eclNumber').value = val;
-    currentECL = val;
-    generate();
-  }
-
-  function syncECLFromNumber() {
-    var raw = parseInt(document.getElementById('eclNumber').value);
-    if (isNaN(raw)) return;
-    var val = Math.min(100, Math.max(0, raw));
-    document.getElementById('eclNumber').value = val;
-    document.getElementById('eclSlider').value = val;
-    currentECL = val;
-    generate();
-  }
-
-  function setECL(n) {
-    document.getElementById('eclSlider').value  = n;
-    document.getElementById('eclNumber').value  = n;
-    currentECL = n;
+  // ── ECL ──
+  function setECL(val) {
+    currentECL = parseInt(val, 10);
     generate();
   }
 
