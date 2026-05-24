@@ -6,9 +6,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pkoretic/pdf417-generator.git"
+  },
+  "keywords": [
+    "pdf417",
+    "hub3",
+    "2d",
+    "barcode"
+  ],
+  "author": "Petar Koretic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pkoretic/pdf417-generator/issues"
+  },
+  "homepage": "https://github.com/pkoretic/pdf417-generator#readme",
   "dependencies": {
-    "canvas": "^3.1.0"
+    "canvas": "^3.2.3",
+    "pdf417-generator": "^1.0.0"
   }
 }
