@@ -1,1286 +1,1194 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AAMVA PDF417 Generator</title>
-
-<!-- PDF417 engine -->
-<script src="../../lib/pdf417.js"></script>
-
-<!-- AAMVA engine (Phase 2) -->
-<script src="../../lib/aamva/aamva-constants.js"></script>
-<script src="../../lib/aamva/aamva-dcf.js"></script>
-<script src="../../lib/aamva/aamva-icn.js"></script>
-<script src="../../lib/aamva/aamva-validator.js"></script>
-<script src="../../lib/aamva/aamva-encoder.js"></script>
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ── Reset & Tokens ────────────────────────────────────────────────── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;scroll-behavior:smooth}
-
-:root,[data-theme="light"]{
-  --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;
-  --border:rgba(40,37,29,.13);--divider:rgba(40,37,29,.08);
-  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;
-  --primary:#01696f;--primary-h:#0c4e54;--primary-ring:rgba(1,105,111,.25);
-  --error:#a12c7b;--error-bg:rgba(161,44,123,.08);
-  --success:#437a22;--success-bg:rgba(67,122,34,.08);
-  --warn:#964219;--warn-bg:rgba(150,66,25,.08);
-  --radius-sm:.375rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;
-  --shadow-sm:0 1px 3px rgba(40,37,29,.08),0 1px 2px rgba(40,37,29,.05);
-  --shadow-md:0 4px 16px rgba(40,37,29,.1),0 2px 6px rgba(40,37,29,.06);
-  --shadow-lg:0 12px 40px rgba(40,37,29,.13),0 4px 12px rgba(40,37,29,.08);
-  --t:180ms cubic-bezier(.16,1,.3,1);
+/* ===== DESIGN TOKENS ===== */
+:root, [data-theme="light"] {
+  --color-bg:             #f7f6f2;
+  --color-surface:        #f9f8f5;
+  --color-surface-2:      #fbfbf9;
+  --color-surface-offset: #f3f0ec;
+  --color-surface-dynamic:#e6e4df;
+  --color-divider:        #dcd9d5;
+  --color-border:         #d4d1ca;
+  --color-text:           #28251d;
+  --color-text-muted:     #7a7974;
+  --color-text-faint:     #bab9b4;
+  --color-text-inverse:   #f9f8f4;
+  --color-primary:        #01696f;
+  --color-primary-hover:  #0c4e54;
+  --color-primary-active: #0f3638;
+  --color-primary-highlight: #cedcd8;
+  --color-success:        #437a22;
+  --color-success-highlight: #d4dfcc;
+  --color-error:          #a12c7b;
+  --color-error-highlight: #e0ced7;
+  --color-warning:        #964219;
+  --color-warning-highlight: #ddcfc6;
+  --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
+  --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
+  --shadow-lg: 0 12px 32px oklch(0.2 0.01 80 / 0.12);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+  --space-1:0.25rem;--space-2:0.5rem;--space-3:0.75rem;--space-4:1rem;
+  --space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-10:2.5rem;
+  --space-12:3rem;--space-16:4rem;
+  --text-xs:clamp(0.75rem,0.7rem + 0.25vw,0.875rem);
+  --text-sm:clamp(0.875rem,0.8rem + 0.35vw,1rem);
+  --text-base:clamp(1rem,0.95rem + 0.25vw,1.125rem);
+  --text-lg:clamp(1.125rem,1rem + 0.75vw,1.5rem);
+  --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-[data-theme="dark"]{
-  --bg:#111110;--surface:#161614;--surface-2:#1c1b19;
-  --border:rgba(255,255,255,.09);--divider:rgba(255,255,255,.05);
-  --text:#cdccca;--muted:#797876;--faint:#4a4947;
-  --primary:#4f98a3;--primary-h:#227f8b;--primary-ring:rgba(79,152,163,.25);
-  --error:#d163a7;--error-bg:rgba(209,99,167,.1);
-  --success:#6daa45;--success-bg:rgba(109,170,69,.1);
-  --warn:#fdab43;--warn-bg:rgba(253,171,67,.1);
-  --shadow-sm:0 1px 3px rgba(0,0,0,.25);--shadow-md:0 4px 16px rgba(0,0,0,.35);--shadow-lg:0 12px 40px rgba(0,0,0,.5);
+[data-theme="dark"] {
+  --color-bg:             #171614;
+  --color-surface:        #1c1b19;
+  --color-surface-2:      #201f1d;
+  --color-surface-offset: #1d1c1a;
+  --color-surface-dynamic:#2d2c2a;
+  --color-divider:        #262523;
+  --color-border:         #393836;
+  --color-text:           #cdccca;
+  --color-text-muted:     #797876;
+  --color-text-faint:     #5a5957;
+  --color-text-inverse:   #2b2a28;
+  --color-primary:        #4f98a3;
+  --color-primary-hover:  #227f8b;
+  --color-primary-active: #1a626b;
+  --color-primary-highlight: #313b3b;
+  --color-success:        #6daa45;
+  --color-success-highlight: #3a4435;
+  --color-error:          #d163a7;
+  --color-error-highlight: #4c3d46;
+  --color-warning:        #bb653b;
+  --color-warning-highlight: #564942;
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.4);
 }
 
+/* ===== BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;}
 body{
-  font-family:'Inter',system-ui,sans-serif;
-  font-size:15px;line-height:1.6;
-  background:var(--bg);color:var(--text);
   min-height:100dvh;
+  font-family:var(--font-body);
+  font-size:var(--text-base);
+  color:var(--color-text);
+  background:var(--color-bg);
+  line-height:1.6;
 }
+img{display:block;max-width:100%;}
+input,select,textarea,button{font:inherit;color:inherit;}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.2;}
+p,li{text-wrap:pretty;}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm);}
+a,button,[role="button"],input,select,textarea{
+  transition:color var(--transition),background var(--transition),
+    border-color var(--transition),box-shadow var(--transition),opacity var(--transition);
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 
-/* ── Typography ────────────────────────────────────────────────────── */
-h1{font-size:clamp(1.35rem,3vw,1.9rem);font-weight:700;letter-spacing:-.02em;line-height:1.15}
-h2{font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
-h3{font-size:.875rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-
-/* ── Layout ────────────────────────────────────────────────────────── */
+/* ===== LAYOUT ===== */
 .app-header{
-  position:sticky;top:0;z-index:50;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  padding:.75rem 1.5rem;
-  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  background:color-mix(in oklch,var(--color-surface) 92%,transparent);
   backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--color-border);
+  padding:var(--space-3) var(--space-6);
+  display:flex;align-items:center;gap:var(--space-3);
 }
-.app-header .logo{display:flex;align-items:center;gap:.6rem}
-.app-header .logo svg{color:var(--primary)}
-.app-header .subtitle{font-size:.75rem;color:var(--muted);margin-top:.1rem;letter-spacing:.02em}
-
-.main{max-width:860px;margin:0 auto;padding:2rem 1.25rem 4rem}
-
-/* ── Theme toggle ──────────────────────────────────────────────────── */
-.theme-btn{
-  width:36px;height:36px;border-radius:var(--radius-md);
-  border:1px solid var(--border);background:var(--surface-2);
-  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:color var(--t),background var(--t);
-}
-.theme-btn:hover{color:var(--text);background:var(--surface)}
-
-/* ── Steps indicator ───────────────────────────────────────────────── */
-.steps{
-  display:flex;align-items:center;gap:0;
-  margin-bottom:2rem;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-xl);padding:.35rem;
-}
-.step-item{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;
-  padding:.55rem .5rem;border-radius:var(--radius-lg);
-  font-size:.8rem;font-weight:500;color:var(--muted);
-  transition:background var(--t),color var(--t);
-  cursor:default;
-}
-.step-item.active{
-  background:var(--primary);color:#fff;
-  box-shadow:0 2px 8px var(--primary-ring);
-}
-.step-item.done{color:var(--primary)}
-.step-num{
-  width:20px;height:20px;border-radius:50%;
-  background:var(--border);color:var(--muted);
-  font-size:.7rem;font-weight:700;
+.app-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--color-text);}
+.app-logo svg{flex-shrink:0;}
+.app-logo-text{font-size:var(--text-sm);font-weight:600;letter-spacing:-0.01em;}
+.app-logo-sub{font-size:var(--text-xs);color:var(--color-text-muted);font-weight:400;}
+.header-spacer{flex:1;}
+.theme-toggle{
   display:flex;align-items:center;justify-content:center;
-  transition:background var(--t),color var(--t);
-}
-.step-item.active .step-num{background:rgba(255,255,255,.25);color:#fff}
-.step-item.done .step-num{background:var(--primary);color:#fff}
-.step-connector{width:1px;height:20px;background:var(--border);flex-shrink:0}
-
-/* ── Cards ─────────────────────────────────────────────────────────── */
-.card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-xl);padding:1.5rem;
-  box-shadow:var(--shadow-sm);
-}
-.card+.card{margin-top:1rem}
-
-/* ── State Grid ────────────────────────────────────────────────────── */
-.state-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
-  gap:.45rem;
-  margin-top:1rem;
-}
-.state-btn{
-  padding:.55rem .4rem;
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  background:var(--surface-2);color:var(--text);
-  font-size:.8rem;font-weight:500;text-align:center;
-  cursor:pointer;
-  transition:border-color var(--t),background var(--t),color var(--t),box-shadow var(--t);
-}
-.state-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--surface)}
-.state-btn.selected{
-  border-color:var(--primary);background:var(--primary);color:#fff;
-  box-shadow:0 2px 8px var(--primary-ring);
-}
-.state-btn .state-code{display:block;font-size:1rem;font-weight:700;letter-spacing:.03em}
-.state-btn .state-name{display:block;font-size:.65rem;color:inherit;opacity:.8;margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.state-btn.selected .state-name{opacity:.9}
-
-/* ── Form grid ─────────────────────────────────────────────────────── */
-.form-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:.85rem;
-}
-.field-full{grid-column:1/-1}
-
-.field-group{display:flex;flex-direction:column;gap:.3rem}
-.field-group label{
-  font-size:.75rem;font-weight:600;
-  color:var(--muted);letter-spacing:.03em;
-}
-.field-group .req{color:var(--error)}
-.field-group .help-text{font-size:.7rem;color:var(--faint);margin-top:.15rem}
-
-input[type=text],select,textarea{
-  width:100%;
-  padding:.5rem .75rem;
-  background:var(--surface-2);
-  border:1.5px solid var(--border);
+  width:36px;height:36px;
   border-radius:var(--radius-md);
-  color:var(--text);
-  font-size:.875rem;
-  font-family:inherit;
-  transition:border-color var(--t),box-shadow var(--t),background var(--t);
-  appearance:none;-webkit-appearance:none;
-}
-input[type=text]:focus,select:focus,textarea:focus{
-  outline:none;
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px var(--primary-ring);
-}
-input.error-field{border-color:var(--error);box-shadow:0 0 0 3px var(--error-bg)}
-.field-error{font-size:.7rem;color:var(--error);margin-top:.2rem}
-
-select option{background:var(--surface);color:var(--text)}
-
-/* ── Section heading inside form ───────────────────────────────────── */
-.section-head{
-  grid-column:1/-1;
-  display:flex;align-items:center;gap:.6rem;
-  padding-top:.25rem;
-  border-top:1px solid var(--divider);
-  margin-top:.25rem;
-}
-.section-head:first-child{border-top:none;margin-top:0;padding-top:0}
-.section-head h3{margin:0}
-
-/* ── Buttons ───────────────────────────────────────────────────────── */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
-  padding:.55rem 1.25rem;
-  border-radius:var(--radius-md);
-  font-size:.875rem;font-weight:600;font-family:inherit;
-  cursor:pointer;border:none;
-  transition:background var(--t),box-shadow var(--t),opacity var(--t),transform var(--t);
-}
-.btn:active{transform:translateY(1px)}
-.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px var(--primary-ring)}
-.btn-primary:hover{background:var(--primary-h)}
-.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
-.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
-.btn-ghost:hover{color:var(--text);border-color:var(--text)}
-.btn-sm{padding:.4rem .85rem;font-size:.8rem}
-
-.form-actions{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-top:1.5rem;gap:.75rem;
-}
-
-/* ── Tag / badge ───────────────────────────────────────────────────── */
-.badge{
-  display:inline-flex;align-items:center;gap:.3rem;
-  padding:.2rem .6rem;
-  border-radius:var(--radius-full,9999px);
-  font-size:.7rem;font-weight:600;
-  letter-spacing:.04em;
-}
-.badge-teal{background:var(--primary-ring);color:var(--primary)}
-.badge-gray{background:var(--divider);color:var(--muted)}
-
-/* ── Barcode settings row ───────────────────────────────────────────── */
-.barcode-settings{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:.75rem;
-  padding:1rem;
-  background:var(--surface-2);
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  margin-bottom:1.25rem;
-}
-.barcode-settings .field-group label{font-size:.72rem}
-.barcode-settings select,
-.barcode-settings input[type=range]{background:var(--surface)}
-/* range slider */
-input[type=range]{
-  width:100%;height:4px;
-  -webkit-appearance:none;appearance:none;
-  border:none;border-radius:99px;
-  background:var(--border);
-  padding:0;
+  border:1px solid var(--color-border);
+  background:var(--color-surface);
+  color:var(--color-text-muted);
   cursor:pointer;
-  accent-color:var(--primary);
 }
-input[type=range]:focus{outline:none;box-shadow:0 0 0 3px var(--primary-ring)}
+.theme-toggle:hover{color:var(--color-text);background:var(--color-surface-offset);}
 
-/* ── Preview step ──────────────────────────────────────────────────── */
-.preview-layout{
+.main-layout{
+  max-width:1100px;
+  margin-inline:auto;
+  padding:var(--space-8) var(--space-6);
   display:grid;
-  grid-template-columns:auto 1fr;
-  gap:1.5rem;
+  grid-template-columns:1fr 380px;
+  gap:var(--space-8);
   align-items:start;
 }
-@media(max-width:640px){.preview-layout{grid-template-columns:1fr}}
+@media(max-width:860px){.main-layout{grid-template-columns:1fr;padding:var(--space-6) var(--space-4);}}
 
-.barcode-wrap{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  padding:1rem;
-  display:flex;flex-direction:column;align-items:center;gap:.75rem;
-  min-width:200px;
+.page-title{
+  grid-column:1/-1;
+  display:flex;align-items:baseline;gap:var(--space-3);
+  margin-bottom:var(--space-2);
 }
-/* always white bg for barcode contrast */
-[data-theme="dark"] .barcode-wrap{background:#fff}
-.barcode-wrap canvas{display:block;max-width:340px;width:100%;image-rendering:pixelated}
-
-.barcode-meta{
-  font-size:.7rem;color:var(--faint);text-align:center;
-  font-variant-numeric:tabular-nums;
+.page-title h1{font-size:var(--text-xl);font-weight:700;letter-spacing:-0.02em;}
+.badge-aamva{
+  font-size:var(--text-xs);font-weight:600;letter-spacing:0.06em;
+  text-transform:uppercase;
+  background:var(--color-primary-highlight);
+  color:var(--color-primary);
+  padding:2px var(--space-2);
+  border-radius:var(--radius-full);
 }
 
-.dl-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:.8rem;
+/* ===== FORM PANEL ===== */
+.form-panel{
+  display:flex;flex-direction:column;gap:var(--space-6);
 }
-.dl-table th{
-  text-align:left;padding:.35rem .5rem;
-  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--faint);border-bottom:1px solid var(--divider);
-  width:90px;
+.form-section{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-xl);
+  overflow:hidden;
+  box-shadow:var(--shadow-sm);
 }
-.dl-table td{
-  padding:.35rem .5rem;
-  border-bottom:1px solid var(--divider);
-  color:var(--text);
-  word-break:break-all;
+.form-section-header{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--color-border);
+  background:var(--color-surface-2);
 }
-.dl-table tr:last-child td{border-bottom:none}
-
-/* ── Raw AAMVA collapsible ─────────────────────────────────────────── */
-.raw-toggle{
-  width:100%;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:.65rem .9rem;
-  margin-top:1.25rem;
-  background:var(--surface-2);
-  border:1px solid var(--border);
-  border-radius:var(--radius-md);
-  cursor:pointer;
-  font-size:.8rem;font-weight:600;color:var(--muted);
-  transition:background var(--t),color var(--t);
+.form-section-header h2{
+  font-size:var(--text-sm);font-weight:600;
+  letter-spacing:0.01em;
+  flex:1;
 }
-.raw-toggle:hover{background:var(--surface);color:var(--text)}
-.raw-toggle .arrow{
-  transition:transform .25s ease;
+.section-dot{
+  width:8px;height:8px;
+  border-radius:var(--radius-full);
+  background:var(--color-primary);
   flex-shrink:0;
 }
-.raw-toggle.open .arrow{transform:rotate(180deg)}
-.raw-panel{
-  display:none;
-  margin-top:.35rem;
-  border:1px solid var(--border);
+.form-section-body{
+  padding:var(--space-5);
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--space-4) var(--space-5);
+}
+.field-full{grid-column:1/-1;}
+@media(max-width:500px){.form-section-body{grid-template-columns:1fr;}}
+
+/* ===== FIELD ===== */
+.field{display:flex;flex-direction:column;gap:var(--space-1);}
+.field label{
+  font-size:var(--text-xs);
+  font-weight:600;
+  color:var(--color-text-muted);
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  display:flex;align-items:center;gap:var(--space-1);
+}
+.field-id{
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--color-text-faint);
+  background:var(--color-surface-offset);
+  padding:1px 5px;
+  border-radius:3px;
+}
+.field input,
+.field select{
+  height:38px;
+  padding:0 var(--space-3);
+  background:var(--color-surface-2);
+  border:1px solid var(--color-border);
   border-radius:var(--radius-md);
+  font-size:var(--text-sm);
+  color:var(--color-text);
+  width:100%;
+}
+.field input::placeholder{color:var(--color-text-faint);}
+.field input:focus,.field select:focus{
+  border-color:var(--color-primary);
+  outline:none;
+  box-shadow:0 0 0 3px color-mix(in oklch,var(--color-primary) 18%,transparent);
+}
+.field-hint{
+  font-size:var(--text-xs);
+  color:var(--color-text-faint);
+}
+.required-star{color:var(--color-error);margin-left:2px;}
+
+/* ===== ACTIONS ===== */
+.form-actions{
+  display:flex;gap:var(--space-3);align-items:center;
+}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);
+  height:42px;padding:0 var(--space-5);
+  border-radius:var(--radius-lg);
+  font-size:var(--text-sm);font-weight:600;
+  cursor:pointer;border:none;
+  white-space:nowrap;
+}
+.btn-primary{
+  background:var(--color-primary);
+  color:#fff;
+}
+.btn-primary:hover{background:var(--color-primary-hover);}
+.btn-primary:active{background:var(--color-primary-active);}
+.btn-ghost{
+  background:transparent;
+  border:1px solid var(--color-border);
+  color:var(--color-text-muted);
+}
+.btn-ghost:hover{background:var(--color-surface-offset);color:var(--color-text);}
+.btn-sm{height:32px;padding:0 var(--space-3);font-size:var(--text-xs);border-radius:var(--radius-md);}
+
+/* ===== OUTPUT PANEL ===== */
+.output-panel{
+  display:flex;flex-direction:column;gap:var(--space-5);
+  position:sticky;top:72px;
+}
+
+.barcode-card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-xl);
   overflow:hidden;
+  box-shadow:var(--shadow-md);
 }
-.raw-panel.open{display:block}
-
-.raw-toolbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:.5rem .85rem;
-  background:var(--surface-2);
-  border-bottom:1px solid var(--border);
+.barcode-card-header{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--color-border);
+  background:var(--color-surface-2);
 }
-.raw-toolbar span{font-size:.72rem;color:var(--faint)}
-.raw-copy-btn{
-  font-size:.72rem;font-weight:600;color:var(--primary);
-  background:none;border:none;cursor:pointer;padding:.2rem .5rem;
-  border-radius:var(--radius-sm);
-  transition:background var(--t);
-}
-.raw-copy-btn:hover{background:var(--primary-ring)}
-
-.raw-output{
-  font-family:'JetBrains Mono','Fira Code',monospace;
-  font-size:.72rem;line-height:1.6;
-  background:var(--surface);
-  padding:.85rem 1rem;
-  white-space:pre-wrap;word-break:break-all;
-  color:var(--muted);
-  max-height:260px;overflow-y:auto;
-}
-/* Highlight control chars */
-.raw-output .ctrl{color:var(--primary);opacity:.7;font-style:italic}
-
-/* ── Encode status badge ───────────────────────────────────────────── */
+.barcode-card-header h2{font-size:var(--text-sm);font-weight:600;flex:1;}
 .encode-status{
-  display:inline-flex;align-items:center;gap:.4rem;
-  padding:.3rem .7rem;
-  border-radius:var(--radius-full,9999px);
-  font-size:.72rem;font-weight:600;
-  letter-spacing:.03em;
-}
-.encode-status.ok{background:var(--success-bg);color:var(--success)}
-.encode-status.err{background:var(--error-bg);color:var(--error)}
-
-/* ── Toast ─────────────────────────────────────────────────────────── */
-.toast{
-  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);padding:.7rem 1.25rem;
-  box-shadow:var(--shadow-lg);font-size:.85rem;font-weight:500;
-  display:flex;align-items:center;gap:.5rem;
-  z-index:999;
-  transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .35s;
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:var(--text-xs);font-weight:600;
+  padding:2px var(--space-2);
+  border-radius:var(--radius-full);
   opacity:0;
-  pointer-events:none;
+  transition:opacity var(--transition);
 }
-.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
-.toast.success{border-color:var(--success);color:var(--success)}
-.toast.error{border-color:var(--error);color:var(--error)}
+.encode-status.visible{opacity:1;}
+.encode-status.ok{background:var(--color-success-highlight);color:var(--color-success);}
+.encode-status.err{background:var(--color-error-highlight);color:var(--color-error);}
 
-/* ── Validation summary ────────────────────────────────────────────── */
-.val-summary{
-  background:var(--error-bg);border:1px solid var(--error);
+.barcode-settings{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--space-3) var(--space-4);
+  padding:var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--color-border);
+  background:var(--color-surface-offset);
+}
+.setting-field{display:flex;flex-direction:column;gap:var(--space-1);}
+.setting-label{
+  font-size:var(--text-xs);font-weight:600;
+  color:var(--color-text-muted);
+  letter-spacing:0.04em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.setting-val{color:var(--color-primary);font-family:var(--font-mono);font-size:11px;}
+.setting-field select,
+.setting-field input[type=range]{
+  width:100%;
+}
+.setting-field select{
+  height:34px;
+  padding:0 var(--space-2);
+  background:var(--color-surface-2);
+  border:1px solid var(--color-border);
   border-radius:var(--radius-md);
-  padding:.75rem 1rem;
-  margin-bottom:1rem;
-  font-size:.8rem;color:var(--error);
+  font-size:var(--text-xs);
+}
+.setting-field input[type=range]{
+  accent-color:var(--color-primary);
+  height:4px;
+  margin-top:var(--space-2);
+}
+.setting-fixed{
+  height:34px;
+  display:flex;align-items:center;
+  font-family:var(--font-mono);
+  font-size:var(--text-xs);
+  color:var(--color-text-muted);
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-md);
+  padding:0 var(--space-3);
+}
+
+.barcode-wrap{
+  padding:var(--space-5);
+  display:flex;flex-direction:column;align-items:center;gap:var(--space-3);
+  background:var(--color-surface);
+}
+.barcode-canvas-box{
+  width:100%;
+  background:#fff;
+  border-radius:var(--radius-md);
+  border:1px solid var(--color-border);
+  overflow:hidden;
+  min-height:100px;
+  display:flex;align-items:center;justify-content:center;
+}
+#barcodeCanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  image-rendering:pixelated;
+}
+.barcode-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:var(--space-2);
+  padding:var(--space-8);
+  color:var(--color-text-faint);
+  font-size:var(--text-xs);
+  text-align:center;
+}
+.barcode-meta{
+  font-size:var(--text-xs);
+  color:var(--color-text-faint);
+  font-family:var(--font-mono);
+  text-align:center;
+}
+.barcode-actions{
+  display:flex;gap:var(--space-2);
+  width:100%;
+}
+.barcode-actions .btn{flex:1;}
+
+/* ===== RAW STRING ===== */
+.raw-card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-xl);
+  overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+.raw-toggle{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-5);
+  width:100%;text-align:left;
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:var(--text-xs);font-weight:600;
+  color:var(--color-text-muted);
+  letter-spacing:0.02em;
+}
+.raw-toggle:hover{color:var(--color-text);background:var(--color-surface-offset);}
+.raw-toggle-label{flex:1;text-align:left;text-transform:uppercase;letter-spacing:0.06em;}
+.raw-byte-badge{
+  font-family:var(--font-mono);
+  font-size:10px;
+  font-weight:500;
+  background:var(--color-surface-offset);
+  border:1px solid var(--color-border);
+  padding:1px 6px;
+  border-radius:var(--radius-full);
+  color:var(--color-text-faint);
+}
+.raw-chevron{
+  transition:transform var(--transition);
+  color:var(--color-text-faint);
+}
+.raw-toggle[aria-expanded="true"] .raw-chevron{transform:rotate(180deg);}
+.raw-body{
   display:none;
+  border-top:1px solid var(--color-border);
 }
-.val-summary.show{display:block}
-.val-summary ul{padding-left:1rem;margin-top:.35rem}
-.val-summary li{margin:.15rem 0}
-
-/* ── State info banner ─────────────────────────────────────────────── */
-.state-banner{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.65rem 1rem;
-  background:var(--primary-ring);border:1px solid var(--primary);
-  border-radius:var(--radius-md);
-  margin-bottom:1.2rem;
-  font-size:.83rem;
+.raw-body.open{display:block;}
+.raw-toolbar{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);
+  background:var(--color-surface-2);
+  border-bottom:1px solid var(--color-border);
 }
-.state-banner strong{color:var(--primary)}
-
-/* ── Revision selector ─────────────────────────────────────────────── */
-#revision-wrap{margin-bottom:1rem}
-
-/* ── Responsive ────────────────────────────────────────────────────── */
-@media(max-width:560px){
-  .form-grid{grid-template-columns:1fr}
-  .field-full,.form-grid [class~=field-full]{grid-column:1/-1}
-  .steps .step-label{display:none}
-  .barcode-settings{grid-template-columns:1fr 1fr}
+.raw-stats{font-size:var(--text-xs);color:var(--color-text-muted);flex:1;font-family:var(--font-mono);}
+.raw-output{
+  font-family:var(--font-mono);
+  font-size:11px;
+  line-height:1.7;
+  color:var(--color-text-muted);
+  padding:var(--space-4);
+  white-space:pre-wrap;
+  word-break:break-all;
+  max-height:260px;
+  overflow-y:auto;
+  background:var(--color-surface);
 }
+.ctrl{color:var(--color-primary);font-weight:600;font-size:10px;}
 
-/* ── Transition panels ─────────────────────────────────────────────── */
-.panel{display:none}
-.panel.active{display:block}
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--color-surface-dynamic);border-radius:3px;}
 
-/* ── Scrollbar ─────────────────────────────────────────────────────── */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
-
-/* ── Focus visible ─────────────────────────────────────────────────── */
-:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:var(--radius-sm)}
-
-/* select arrow */
-select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-position:right .6rem center;
-  padding-right:2rem;
+/* ===== EMPTY STATES ===== */
+.empty-hint{
+  font-size:var(--text-xs);
+  color:var(--color-text-faint);
+  text-align:center;
+  padding:var(--space-4);
 }
 </style>
 </head>
 <body>
 
-<!-- ── Header ─────────────────────────────────────────────────────── -->
+<!-- HEADER -->
 <header class="app-header">
-  <div class="logo">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <rect x="2" y="2" width="4" height="24" fill="currentColor"/>
-      <rect x="8" y="2" width="2" height="24" fill="currentColor"/>
-      <rect x="12" y="2" width="6" height="24" fill="currentColor"/>
-      <rect x="20" y="2" width="2" height="24" fill="currentColor"/>
-      <rect x="24" y="2" width="2" height="24" fill="currentColor"/>
+  <a class="app-logo" href="#">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-label="PDF417 AAMVA logo">
+      <rect width="28" height="28" rx="6" fill="var(--color-primary)"/>
+      <rect x="4" y="7" width="2" height="14" fill="white"/>
+      <rect x="7" y="7" width="1" height="14" fill="white"/>
+      <rect x="9" y="7" width="3" height="14" fill="white"/>
+      <rect x="13" y="7" width="1" height="14" fill="white"/>
+      <rect x="15" y="7" width="2" height="14" fill="white"/>
+      <rect x="18" y="7" width="1" height="14" fill="white"/>
+      <rect x="20" y="7" width="3" height="14" fill="white"/>
+      <rect x="24" y="7" width="1" height="14" fill="white"/>
     </svg>
     <div>
-      <h1 style="font-size:1.05rem;margin:0">AAMVA PDF417 Generator</h1>
-      <div class="subtitle">Driver License Barcode · AAMVA 2016 Standard</div>
+      <div class="app-logo-text">PDF417 AAMVA</div>
+      <div class="app-logo-sub">DL / ID Barcode Generator</div>
     </div>
-  </div>
-  <button class="theme-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light/dark">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </a>
+  <div class="header-spacer"></div>
+  <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
   </button>
 </header>
 
-<!-- ── Main ───────────────────────────────────────────────────────── -->
-<main class="main">
-
-  <!-- Steps -->
-  <div class="steps" role="tablist" aria-label="Steps">
-    <div class="step-item active" id="step-ind-1" role="tab">
-      <span class="step-num">1</span>
-      <span class="step-label">Select State</span>
-    </div>
-    <div class="step-connector"></div>
-    <div class="step-item" id="step-ind-2" role="tab">
-      <span class="step-num">2</span>
-      <span class="step-label">Fill Fields</span>
-    </div>
-    <div class="step-connector"></div>
-    <div class="step-item" id="step-ind-3" role="tab">
-      <span class="step-num">3</span>
-      <span class="step-label">Preview &amp; Download</span>
-    </div>
+<!-- MAIN -->
+<main class="main-layout">
+  <div class="page-title">
+    <h1>Driver License / ID Generator</h1>
+    <span class="badge-aamva">AAMVA 2020</span>
   </div>
 
-  <!-- ── STEP 1: State Select ─────────────────────────────────────── -->
-  <div class="panel active" id="panel-1">
-    <div class="card">
-      <h2>Select Issuing State</h2>
-      <p style="color:var(--muted);font-size:.85rem;margin-top:.35rem">Choose the state/territory that issued the driver license.</p>
-      <div class="state-grid" id="stateGrid"></div>
-    </div>
-    <div class="form-actions">
-      <span></span>
-      <button class="btn btn-primary" id="step1Next" disabled onclick="goStep(2)">
-        Continue <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-  </div>
+  <!-- LEFT: FORM -->
+  <div class="form-panel">
 
-  <!-- ── STEP 2: Fields ────────────────────────────────────────────── -->
-  <div class="panel" id="panel-2">
-
-    <div id="stateBanner" class="state-banner" style="display:none">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-      <span>Generating for: <strong id="bannerState">—</strong> &nbsp;·&nbsp; AAMVA v<strong id="bannerVer">—</strong> &nbsp;·&nbsp; IIN: <strong id="bannerIIN">—</strong></span>
-    </div>
-
-    <div id="revision-wrap" style="display:none">
-      <div class="card" style="padding:1rem 1.25rem">
-        <div class="field-group">
-          <label>Card Revision Date (DDB)</label>
-          <select id="revisionSelect" onchange="onRevisionChange()"></select>
-          <span class="help-text">Matches the physical card design on file for this state</span>
+    <!-- Issuer -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot"></div>
+        <h2>Issuer Information</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field">
+          <label>Issuing State / Territory <span class="required-star">*</span></label>
+          <select id="fIssuerState">
+            <option value="">-- Select --</option>
+            <option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option>
+            <option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option>
+            <option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="FL">Florida</option>
+            <option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option>
+            <option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option>
+            <option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option>
+            <option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option>
+            <option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option>
+            <option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option>
+            <option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option>
+            <option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option>
+            <option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option>
+            <option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option>
+            <option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option>
+            <option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option>
+            <option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option>
+            <option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+            <option value="DC">District of Columbia</option>
+            <option value="AB">Alberta</option><option value="BC">British Columbia</option>
+            <option value="MB">Manitoba</option><option value="NB">New Brunswick</option>
+            <option value="NL">Newfoundland</option><option value="NS">Nova Scotia</option>
+            <option value="ON">Ontario</option><option value="PE">Prince Edward Island</option>
+            <option value="QC">Quebec</option><option value="SK">Saskatchewan</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Document Type <span class="required-star">*</span></label>
+          <select id="fDocType">
+            <option value="DL">Driver License (DL)</option>
+            <option value="ID">Identification Card (ID)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>AAMVA Version <span class="required-star">*</span></label>
+          <select id="fAamvaVer">
+            <option value="09">09 — 2020</option>
+            <option value="08">08 — 2016</option>
+            <option value="07">07 — 2012</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Issuer ID Number <span class="required-star">*</span>
+            <span class="field-id">IIN</span>
+          </label>
+          <input id="fIIN" type="text" maxlength="6" placeholder="636000" value="636000">
+          <span class="field-hint">6-digit AAMVA issuer code</span>
         </div>
       </div>
     </div>
 
-    <div class="val-summary" id="valSummary">
-      <strong>Please fix the following errors:</strong>
-      <ul id="valList"></ul>
+    <!-- Name -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot"></div>
+        <h2>Name</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field">
+          <label>Last Name <span class="required-star">*</span>
+            <span class="field-id">DCS</span>
+          </label>
+          <input id="fDCS" type="text" placeholder="DOE">
+        </div>
+        <div class="field">
+          <label>First Name <span class="required-star">*</span>
+            <span class="field-id">DAC</span>
+          </label>
+          <input id="fDAC" type="text" placeholder="JOHN">
+        </div>
+        <div class="field">
+          <label>Middle Name
+            <span class="field-id">DAD</span>
+          </label>
+          <input id="fDAD" type="text" placeholder="ADAM">
+        </div>
+        <div class="field">
+          <label>Name Suffix
+            <span class="field-id">DCU</span>
+          </label>
+          <input id="fDCU" type="text" placeholder="JR">
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <form id="aamvaForm" novalidate autocomplete="off">
-        <div class="form-grid">
+    <!-- Dates & DL Number -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot"></div>
+        <h2>Dates &amp; Document Number</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field">
+          <label>DL / ID Number <span class="required-star">*</span>
+            <span class="field-id">DAQ</span>
+          </label>
+          <input id="fDAQ" type="text" placeholder="D12345678">
+        </div>
+        <div class="field">
+          <label>Date of Birth <span class="required-star">*</span>
+            <span class="field-id">DBB</span>
+          </label>
+          <input id="fDBB" type="date">
+        </div>
+        <div class="field">
+          <label>Issue Date <span class="required-star">*</span>
+            <span class="field-id">DBD</span>
+          </label>
+          <input id="fDBD" type="date">
+        </div>
+        <div class="field">
+          <label>Expiry Date <span class="required-star">*</span>
+            <span class="field-id">DBA</span>
+          </label>
+          <input id="fDBA" type="date">
+        </div>
+      </div>
+    </div>
 
-          <!-- ── Identity ── -->
-          <div class="section-head"><h3>Identity</h3></div>
+    <!-- Physical -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot"></div>
+        <h2>Physical Description</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field">
+          <label>Sex <span class="required-star">*</span>
+            <span class="field-id">DBC</span>
+          </label>
+          <select id="fDBC">
+            <option value="">-- Select --</option>
+            <option value="1">Male (1)</option>
+            <option value="2">Female (2)</option>
+            <option value="9">Not Specified (9)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Eye Color
+            <span class="field-id">DAY</span>
+          </label>
+          <select id="fDAY">
+            <option value="">-- None --</option>
+            <option value="BLK">Black</option>
+            <option value="BLU">Blue</option>
+            <option value="BRO">Brown</option>
+            <option value="GRY">Gray</option>
+            <option value="GRN">Green</option>
+            <option value="HAZ">Hazel</option>
+            <option value="MAR">Maroon</option>
+            <option value="PNK">Pink</option>
+            <option value="DIC">Dichromatic</option>
+            <option value="UNK">Unknown</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Hair Color
+            <span class="field-id">DAZ</span>
+          </label>
+          <select id="fDAZ">
+            <option value="">-- None --</option>
+            <option value="BAL">Bald</option>
+            <option value="BLK">Black</option>
+            <option value="BLN">Blond</option>
+            <option value="BRO">Brown</option>
+            <option value="GRY">Gray</option>
+            <option value="RED">Red/Auburn</option>
+            <option value="SDY">Sandy</option>
+            <option value="WHI">White</option>
+            <option value="UNK">Unknown</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Height (in)
+            <span class="field-id">DAU</span>
+          </label>
+          <input id="fDAU" type="text" placeholder="072 in" maxlength="6">
+          <span class="field-hint">e.g. 072 in or 183 cm</span>
+        </div>
+        <div class="field">
+          <label>Weight (lbs)
+            <span class="field-id">DAW</span>
+          </label>
+          <input id="fDAW" type="text" maxlength="3" placeholder="185">
+        </div>
+      </div>
+    </div>
 
-          <div class="field-group">
-            <label for="f_DCS">Last Name <span class="req">*</span></label>
-            <input type="text" id="f_DCS" name="DCS" placeholder="SMITH" maxlength="40" />
-          </div>
-          <div class="field-group">
-            <label for="f_DAC">First Name <span class="req">*</span></label>
-            <input type="text" id="f_DAC" name="DAC" placeholder="JOHN" maxlength="40" />
-          </div>
-          <div class="field-group">
-            <label for="f_DAD">Middle Name</label>
-            <input type="text" id="f_DAD" name="DAD" placeholder="MICHAEL" maxlength="40" />
-          </div>
-          <div class="field-group">
-            <label for="f_DBN">Name Suffix</label>
-            <select id="f_DBN" name="DBN">
-              <option value="">None</option>
-              <option value="JR">Junior (JR)</option>
-              <option value="SR">Senior (SR)</option>
-              <option value="I">First (I)</option>
-              <option value="II">Second (II)</option>
-              <option value="III">Third (III)</option>
-              <option value="IV">Fourth (IV)</option>
-              <option value="V">Fifth (V)</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDE">Last Name Truncated</label>
-            <select id="f_DDE" name="DDE">
-              <option value="N">N — Not truncated</option>
-              <option value="T">T — Truncated</option>
-              <option value="U">U — Unknown</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDF">First Name Truncated</label>
-            <select id="f_DDF" name="DDF">
-              <option value="N">N — Not truncated</option>
-              <option value="T">T — Truncated</option>
-              <option value="U">U — Unknown</option>
-            </select>
-          </div>
+    <!-- Address -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot"></div>
+        <h2>Address</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field field-full">
+          <label>Street Address 1 <span class="required-star">*</span>
+            <span class="field-id">DAG</span>
+          </label>
+          <input id="fDAG" type="text" placeholder="123 MAIN ST">
+        </div>
+        <div class="field">
+          <label>Street Address 2
+            <span class="field-id">DAH</span>
+          </label>
+          <input id="fDAH" type="text" placeholder="APT 4B">
+        </div>
+        <div class="field">
+          <label>City <span class="required-star">*</span>
+            <span class="field-id">DAI</span>
+          </label>
+          <input id="fDAI" type="text" placeholder="ANYTOWN">
+        </div>
+        <div class="field">
+          <label>State <span class="required-star">*</span>
+            <span class="field-id">DAJ</span>
+          </label>
+          <input id="fDAJ" type="text" maxlength="2" placeholder="TX">
+        </div>
+        <div class="field">
+          <label>Postal Code <span class="required-star">*</span>
+            <span class="field-id">DAK</span>
+          </label>
+          <input id="fDAK" type="text" maxlength="11" placeholder="750010000">
+          <span class="field-hint">9 digits, no dash</span>
+        </div>
+        <div class="field">
+          <label>Country
+            <span class="field-id">DCG</span>
+          </label>
+          <select id="fDCG">
+            <option value="USA">USA</option>
+            <option value="CAN">Canada</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
-          <!-- ── Demographics ── -->
-          <div class="section-head"><h3>Demographics</h3></div>
-
-          <div class="field-group">
-            <label for="f_DBB">Date of Birth <span class="req">*</span></label>
-            <input type="text" id="f_DBB" name="DBB" placeholder="01/15/1990" maxlength="10" />
-            <span class="help-text">MM/DD/YYYY — auto-formats as you type</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DBC">Sex <span class="req">*</span></label>
-            <select id="f_DBC" name="DBC">
-              <option value="1">Male</option>
-              <option value="2">Female</option>
-              <option value="9">Not Specified</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DAY">Eye Color <span class="req">*</span></label>
-            <select id="f_DAY" name="DAY">
-              <option value="BLK">Black (BLK)</option>
-              <option value="BLU">Blue (BLU)</option>
-              <option value="BRO" selected>Brown (BRO)</option>
-              <option value="GRY">Gray (GRY)</option>
-              <option value="GRN">Green (GRN)</option>
-              <option value="HAZ">Hazel (HAZ)</option>
-              <option value="MAR">Maroon (MAR)</option>
-              <option value="PNK">Pink (PNK)</option>
-              <option value="DIC">Dichromatic (DIC)</option>
-              <option value="UNK">Unknown (UNK)</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DAZ">Hair Color</label>
-            <select id="f_DAZ" name="DAZ">
-              <option value="">— Select —</option>
-              <option value="BAL">Bald (BAL)</option>
-              <option value="BLK">Black (BLK)</option>
-              <option value="BLN">Blond (BLN)</option>
-              <option value="BRO">Brown (BRO)</option>
-              <option value="GRY">Gray (GRY)</option>
-              <option value="RED">Red (RED)</option>
-              <option value="AUB">Auburn (AUB)</option>
-              <option value="SDY">Sandy (SDY)</option>
-              <option value="WHI">White (WHI)</option>
-              <option value="UNK">Unknown (UNK)</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DAU">Height (inches) <span class="req">*</span></label>
-            <input type="text" id="f_DAU" name="DAU" placeholder="068" maxlength="3" />
-            <span class="help-text">Total inches — e.g. 068 = 5'08"</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DAW">Weight (lbs)</label>
-            <input type="text" id="f_DAW" name="DAW" placeholder="165" maxlength="3" />
-          </div>
-          <div class="field-group">
-            <label for="f_DCL">Race / Ethnicity</label>
-            <select id="f_DCL" name="DCL">
-              <option value="">— Select —</option>
-              <option value="AI">AI — American Indian</option>
-              <option value="AP">AP — Asian/Pacific Islander</option>
-              <option value="BK">BK — Black</option>
-              <option value="H">H — Hispanic</option>
-              <option value="O">O — Non-Hispanic</option>
-              <option value="U">U — Unknown</option>
-              <option value="W">W — White</option>
-            </select>
-          </div>
-
-          <!-- ── Address ── -->
-          <div class="section-head"><h3>Address</h3></div>
-
-          <div class="field-group field-full">
-            <label for="f_DAG">Street Address <span class="req">*</span></label>
-            <input type="text" id="f_DAG" name="DAG" placeholder="123 MAIN ST" maxlength="50" />
-          </div>
-          <div class="field-group field-full">
-            <label for="f_DAH">Address Line 2</label>
-            <input type="text" id="f_DAH" name="DAH" placeholder="APT 4B" maxlength="40" />
-          </div>
-          <div class="field-group">
-            <label for="f_DAI">City <span class="req">*</span></label>
-            <input type="text" id="f_DAI" name="DAI" placeholder="ANYTOWN" maxlength="30" />
-          </div>
-          <div class="field-group">
-            <label for="f_DAK">ZIP Code <span class="req">*</span></label>
-            <input type="text" id="f_DAK" name="DAK" placeholder="123450000" maxlength="9" />
-            <span class="help-text">5 or 9 digits, no hyphen</span>
-          </div>
-
-          <!-- ── License ── -->
-          <div class="section-head"><h3>License Info</h3></div>
-
-          <div class="field-group">
-            <label for="f_DAQ">License Number <span class="req">*</span></label>
-            <input type="text" id="f_DAQ" name="DAQ" placeholder="A1234567" maxlength="25" />
-            <span class="help-text">Auto-generated for selected state</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DCA">Vehicle Class</label>
-            <input type="text" id="f_DCA" name="DCA" placeholder="C" maxlength="6" />
-          </div>
-          <div class="field-group">
-            <label for="f_DCB">Restrictions</label>
-            <input type="text" id="f_DCB" name="DCB" placeholder="NONE" maxlength="12" />
-          </div>
-          <div class="field-group">
-            <label for="f_DCD">Endorsements</label>
-            <input type="text" id="f_DCD" name="DCD" placeholder="NONE" maxlength="5" />
-          </div>
-
-          <!-- ── Dates ── -->
-          <div class="section-head"><h3>Dates</h3></div>
-
-          <div class="field-group">
-            <label for="f_DBD">Issue Date <span class="req">*</span></label>
-            <input type="text" id="f_DBD" name="DBD" placeholder="01/15/2025" maxlength="10" />
-            <span class="help-text">MM/DD/YYYY</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DBA">Expiration Date <span class="req">*</span></label>
-            <input type="text" id="f_DBA" name="DBA" placeholder="01/15/2029" maxlength="10" />
-            <span class="help-text">MM/DD/YYYY</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DDJ">Under 18 Until</label>
-            <input type="text" id="f_DDJ" name="DDJ" placeholder="01/15/2023" maxlength="10" />
-            <span class="help-text">MM/DD/YYYY — optional</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DCG">Country of Issue</label>
-            <select id="f_DCG" name="DCG">
-              <option value="USA" selected>United States (USA)</option>
-              <option value="CAN">Canada (CAN)</option>
-              <option value="MEX">Mexico (MEX)</option>
-            </select>
-          </div>
-
-          <!-- ── Document ── -->
-          <div class="section-head"><h3>Document / Compliance</h3></div>
-
-          <div class="field-group field-full">
-            <label for="f_DCF">Document Discriminator (DCF)</label>
-            <input type="text" id="f_DCF" name="DCF" placeholder="Auto-generated" maxlength="25" />
-            <span class="help-text">Auto-filled — override if needed</span>
-          </div>
-          <div class="field-group field-full">
-            <label for="f_DCK">Inventory Control Number (DCK)</label>
-            <input type="text" id="f_DCK" name="DCK" placeholder="Auto-generated" maxlength="25" />
-            <span class="help-text">Auto-filled — override if needed</span>
-          </div>
-          <div class="field-group">
-            <label for="f_DDA">Compliance Type</label>
-            <select id="f_DDA" name="DDA">
-              <option value="F" selected>F — Compliant (REAL ID)</option>
-              <option value="N">N — Non-compliant</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDG">Middle Name Truncated</label>
-            <select id="f_DDG" name="DDG">
-              <option value="N">N — Not truncated</option>
-              <option value="T">T — Truncated</option>
-              <option value="U">U — Unknown</option>
-            </select>
-          </div>
-
-          <!-- ── Flags ── -->
-          <div class="section-head"><h3>Optional Flags</h3></div>
-
-          <div class="field-group">
-            <label for="f_DDK">Organ Donor</label>
-            <select id="f_DDK" name="DDK">
-              <option value="">No</option>
-              <option value="1">Yes</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDL">Veteran</label>
-            <select id="f_DDL" name="DDL">
-              <option value="">No</option>
-              <option value="1">Yes</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDD">Limited Duration Document</label>
-            <select id="f_DDD" name="DDD">
-              <option value="">No</option>
-              <option value="1">Yes</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label for="f_DDO">Enhanced Credential</label>
-            <select id="f_DDO" name="DDO">
-              <option value="">No</option>
-              <option value="1">Yes</option>
-            </select>
-          </div>
-
-        </div><!-- /form-grid -->
-      </form>
-    </div><!-- /card -->
+    <!-- Optional -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="section-dot" style="background:var(--color-text-faint)"></div>
+        <h2>Optional Fields</h2>
+      </div>
+      <div class="form-section-body">
+        <div class="field">
+          <label>Race / Ethnicity
+            <span class="field-id">DCL</span>
+          </label>
+          <select id="fDCL">
+            <option value="">-- None --</option>
+            <option value="AI">AI — Am. Indian/AK Native</option>
+            <option value="AP">AP — Asian/Pacific Islander</option>
+            <option value="BK">BK — Black</option>
+            <option value="H">H — Hispanic Origin</option>
+            <option value="O">O — Non-Hispanic</option>
+            <option value="U">U — Unknown</option>
+            <option value="W">W — White</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Organ Donor
+            <span class="field-id">DDK</span>
+          </label>
+          <select id="fDDK">
+            <option value="">-- None --</option>
+            <option value="1">Yes (1)</option>
+            <option value="0">No (0)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Veteran
+            <span class="field-id">DDL</span>
+          </label>
+          <select id="fDDL">
+            <option value="">-- None --</option>
+            <option value="1">Yes (1)</option>
+            <option value="0">No (0)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Under 18 Until
+            <span class="field-id">DDH</span>
+          </label>
+          <input id="fDDH" type="date">
+        </div>
+        <div class="field">
+          <label>Under 21 Until
+            <span class="field-id">DDI</span>
+          </label>
+          <input id="fDDI" type="date">
+        </div>
+        <div class="field">
+          <label>Limited Duration
+            <span class="field-id">DDD</span>
+          </label>
+          <select id="fDDD">
+            <option value="">-- None --</option>
+            <option value="1">Yes (1)</option>
+            <option value="0">No (0)</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
     <div class="form-actions">
-      <button class="btn btn-ghost" onclick="goStep(1)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Back
-      </button>
-      <button class="btn btn-primary" id="step2Next" onclick="handleGenerate()">
+      <button class="btn btn-primary" id="btnGenerate">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         Generate Barcode
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="4" height="20"/><rect x="8" y="2" width="2" height="20"/><rect x="12" y="2" width="5" height="20"/><rect x="19" y="2" width="2" height="20"/></svg>
       </button>
+      <button class="btn btn-ghost" id="btnReset">Reset</button>
     </div>
-  </div><!-- /panel-2 -->
+  </div>
 
-  <!-- ── STEP 3: Preview ───────────────────────────────────────────── -->
-  <div class="panel" id="panel-3">
-    <div class="card">
+  <!-- RIGHT: OUTPUT -->
+  <div class="output-panel">
 
-      <!-- Header row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem">
-        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-          <h2>Preview &amp; Download</h2>
-          <span class="encode-status ok" id="encodeStatus">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Encoded
-          </span>
+    <!-- Barcode card -->
+    <div class="barcode-card">
+      <div class="barcode-card-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-primary)"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h2v10H7zM11 7h1v10h-1zM13 7h1v10h-1zM15 7h2v10h-2z"/></svg>
+        <h2>PDF417 Preview</h2>
+        <div class="encode-status" id="encodeStatus"></div>
+      </div>
+
+      <div class="barcode-settings">
+        <div class="setting-field">
+          <div class="setting-label">
+            Error Correction
+            <span class="setting-val" id="eclVal">ECL 4</span>
+          </div>
+          <select id="sECL">
+            <option value="2">ECL 2 — 13 codewords</option>
+            <option value="3">ECL 3 — 22 codewords</option>
+            <option value="4" selected>ECL 4 — 32 codewords</option>
+            <option value="5">ECL 5 — 64 codewords</option>
+          </select>
         </div>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost btn-sm" onclick="goStep(2)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
-          <button class="btn btn-primary btn-sm" id="dlBtn" onclick="downloadPNG()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div class="setting-field">
+          <div class="setting-label">
+            Aspect Ratio
+            <span class="setting-val" id="arVal">2.0</span>
+          </div>
+          <input type="range" id="sAR" min="1" max="5" step="0.5" value="2">
+        </div>
+        <div class="setting-field">
+          <div class="setting-label">Columns</div>
+          <div class="setting-fixed">15 (hardcoded)</div>
+        </div>
+        <div class="setting-field">
+          <div class="setting-label">Standard</div>
+          <div class="setting-fixed">AAMVA 2020</div>
+        </div>
+      </div>
+
+      <div class="barcode-wrap">
+        <div class="barcode-canvas-box" id="canvasBox">
+          <div class="barcode-placeholder" id="barcodePlaceholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h2v10H7zM11 7h1v10h-1zM13 7h1v10h-1zM15 7h2v10h-2z"/></svg>
+            <span>Fill the form &amp; click Generate</span>
+          </div>
+          <canvas id="barcodeCanvas" style="display:none;"></canvas>
+        </div>
+        <div class="barcode-meta" id="barcodeMeta"></div>
+        <div class="barcode-actions">
+          <button class="btn btn-primary btn-sm" id="btnDownload" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download PNG
           </button>
-        </div>
-      </div>
-
-      <!-- Barcode settings (Phase 4) -->
-      <div class="barcode-settings">
-        <div class="field-group">
-          <label for="bsECL">Error Correction Level</label>
-          <select id="bsECL" onchange="regenerateBarcode()">
-            <option value="2">ECL 2 — Minimal (8 codewords)</option>
-            <option value="3">ECL 3 — Low (16 codewords)</option>
-            <option value="4" selected>ECL 4 — Standard (32 codewords)</option>
-            <option value="5">ECL 5 — High (64 codewords)</option>
-          </select>
-          <span class="help-text">AAMVA recommends ECL 3–5</span>
-        </div>
-        <div class="field-group">
-          <label for="bsAspect">Aspect Ratio: <strong id="bsAspectVal">2.0</strong></label>
-          <input type="range" id="bsAspect" min="1" max="5" step="0.5" value="2"
-                 oninput="document.getElementById('bsAspectVal').textContent=parseFloat(this.value).toFixed(1); regenerateBarcode()" />
-          <span class="help-text">Width-to-height ratio of the barcode</span>
-        </div>
-        <div class="field-group" style="align-self:end">
-          <label>&nbsp;</label>
-          <div style="font-size:.72rem;color:var(--faint);line-height:1.5">
-            Columns: <strong style="color:var(--text)">15</strong> (hardcoded)<br>
-            Standard: <strong style="color:var(--text)">PDF417 AAMVA</strong>
-          </div>
-        </div>
-      </div>
-
-      <!-- Preview layout -->
-      <div class="preview-layout">
-        <div class="barcode-wrap">
-          <canvas id="barcodeCanvas" aria-label="PDF417 barcode"></canvas>
-          <div class="barcode-meta" id="barcodeInfo">—</div>
-        </div>
-        <div>
-          <h3 style="margin-bottom:.75rem">Field Summary</h3>
-          <table class="dl-table" id="dlTable"><tbody></tbody></table>
-        </div>
-      </div>
-
-      <!-- Raw AAMVA string — collapsible (Phase 4) -->
-      <button class="raw-toggle" id="rawToggle" onclick="toggleRaw()" aria-expanded="false" aria-controls="rawPanel">
-        <span style="display:flex;align-items:center;gap:.5rem">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          Raw AAMVA String
-          <span class="badge badge-gray" id="rawByteCount">0 bytes</span>
-        </span>
-        <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="raw-panel" id="rawPanel" role="region" aria-labelledby="rawToggle">
-        <div class="raw-toolbar">
-          <span id="rawLengthInfo">0 chars · 0 data elements</span>
-          <button class="raw-copy-btn" onclick="copyRaw()" title="Copy raw string to clipboard">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Copy
+          <button class="btn btn-ghost btn-sm" id="btnRegen" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Re-draw
           </button>
         </div>
-        <pre class="raw-output" id="rawOutput" role="textbox" aria-readonly="true" aria-label="Raw AAMVA barcode string"></pre>
       </div>
-
-    </div><!-- /card -->
-
-    <div class="form-actions">
-      <button class="btn btn-ghost" onclick="resetAll()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        Start Over
-      </button>
-      <button class="btn btn-primary btn-sm" onclick="downloadPNG()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download PNG
-      </button>
     </div>
-  </div><!-- /panel-3 -->
 
+    <!-- Raw AAMVA string -->
+    <div class="raw-card">
+      <button class="raw-toggle" id="rawToggle" aria-expanded="false">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--color-primary)"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span class="raw-toggle-label">Raw AAMVA String</span>
+        <span class="raw-byte-badge" id="rawBytesBadge">— bytes</span>
+        <svg class="raw-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="raw-body" id="rawBody">
+        <div class="raw-toolbar">
+          <span class="raw-stats" id="rawStats">—</span>
+          <button class="btn btn-ghost btn-sm" id="btnCopy">Copy</button>
+        </div>
+        <div class="raw-output" id="rawOutput"><span style="color:var(--color-text-faint)">No data yet.</span></div>
+      </div>
+    </div>
+
+  </div>
 </main>
 
-<!-- ── Toast ────────────────────────────────────────────────────────── -->
-<div class="toast" id="toast" role="alert" aria-live="polite"></div>
-
+<script src="../../lib/pdf417.js"></script>
 <script>
-// ── Theme ──────────────────────────────────────────────────────────────
+// ===== THEME TOGGLE =====
 (function(){
-  var d = document.documentElement;
-  var isDark = d.getAttribute('data-theme') === 'dark';
-  var btn = document.getElementById('themeBtn');
-  function setIcon(dark){
-    btn.innerHTML = dark
-      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
-  }
-  setIcon(isDark);
-  btn.addEventListener('click', function(){
-    isDark = !isDark;
-    d.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    setIcon(isDark);
+  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+  let d='dark';
+  r.setAttribute('data-theme',d);
+  if(t)t.addEventListener('click',()=>{
+    d=d==='dark'?'light':'dark';
+    r.setAttribute('data-theme',d);
+    t.innerHTML=d==='dark'
+      ?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      :'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
   });
 })();
 
-// ── State ──────────────────────────────────────────────────────────────
-var selectedState    = null;
-var generatedPayload = null;
+// ===== SETTINGS LIVE LABELS =====
+const sECL=document.getElementById('sECL');
+const sAR=document.getElementById('sAR');
+sECL.addEventListener('change',()=>{
+  document.getElementById('eclVal').textContent='ECL '+sECL.value;
+  if(lastPayload) regenerateBarcode();
+});
+sAR.addEventListener('input',()=>{
+  document.getElementById('arVal').textContent=parseFloat(sAR.value).toFixed(1);
+  if(lastPayload) regenerateBarcode();
+});
 
-// ── PDF417 draw params (Phase 4) — columns hardcoded to 15 ────────────
-var BARCODE_COLUMNS = 15;
-
-function getBarcodeECL(){
-  return parseInt(document.getElementById('bsECL').value, 10);
+// ===== AAMVA ENCODER =====
+function pad(str,len,ch=' '){return String(str).padEnd(len,ch).slice(0,len);}
+function fmtDate(val){
+  // input: yyyy-mm-dd  → output: MMDDYYYY
+  if(!val)return null;
+  const [y,m,d]=val.split('-');
+  return m+d+y;
 }
-function getBarcodeAspect(){
-  return parseFloat(document.getElementById('bsAspect').value);
-}
+function buildAAMVA(){
+  const g=id=>document.getElementById(id).value.trim();
+  const gs=id=>document.getElementById(id);
 
-// ── Build state grid ───────────────────────────────────────────────────
-(function buildStateGrid(){
-  var grid = document.getElementById('stateGrid');
-  STATE_CONFIGS.forEach(function(s){
-    var btn = document.createElement('button');
-    btn.className = 'state-btn';
-    btn.setAttribute('data-code', s.code);
-    btn.innerHTML = '<span class="state-code">'+s.code+'</span><span class="state-name">'+s.name+'</span>';
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('.state-btn').forEach(function(b){ b.classList.remove('selected'); });
-      btn.classList.add('selected');
-      selectedState = s.code;
-      document.getElementById('step1Next').disabled = false;
-    });
-    grid.appendChild(btn);
-  });
-})();
+  // Mandatory fields
+  const state   = g('fIssuerState');
+  const docType = g('fDocType');
+  const ver     = g('fAamvaVer');
+  const iin     = g('fIIN').padEnd(6,'0').slice(0,6);
+  const dcs     = g('fDCS');  // last
+  const dac     = g('fDAC');  // first
+  const dad     = g('fDAD');  // middle
+  const dcu     = g('fDCU');  // suffix
+  const daq     = g('fDAQ');  // dl number
+  const dbb     = fmtDate(g('fDBB'));  // dob
+  const dbd     = fmtDate(g('fDBD'));  // issue
+  const dba     = fmtDate(g('fDBA'));  // expiry
+  const dbc     = g('fDBC');  // sex
+  const day     = g('fDAY');  // eye
+  const daz     = g('fDAZ');  // hair
+  const dau     = g('fDAU');  // height
+  const daw     = g('fDAW');  // weight
+  const dag     = g('fDAG');  // street1
+  const dah     = g('fDAH');  // street2
+  const dai     = g('fDAI');  // city
+  const daj     = g('fDAJ').toUpperCase();  // state abbrev
+  const dak     = g('fDAK').replace(/\D/g,'').padEnd(9,'0').slice(0,9);
+  const dcg     = g('fDCG');  // country
+  // Optional
+  const dcl     = g('fDCL');
+  const ddk     = g('fDDK');
+  const ddl     = g('fDDL');
+  const ddh     = fmtDate(g('fDDH'));
+  const ddi     = fmtDate(g('fDDI'));
+  const ddd     = g('fDDD');
 
-// ── Step navigation ────────────────────────────────────────────────────
-function goStep(n){
-  [1,2,3].forEach(function(i){
-    document.getElementById('panel-'+i).classList.toggle('active', i===n);
-    var ind = document.getElementById('step-ind-'+i);
-    ind.classList.toggle('active', i===n);
-    ind.classList.toggle('done', i<n);
-  });
-  window.scrollTo({top:0,behavior:'smooth'});
-  if(n===2) onEnterStep2();
-}
-
-// ── Enter step 2: populate banner, revision, autofill ─────────────────
-function onEnterStep2(){
-  var cfg = getStateConfig(selectedState);
-  if(!cfg) return;
-
-  document.getElementById('bannerState').textContent = cfg.name + ' (' + cfg.code + ')';
-  document.getElementById('bannerVer').textContent   = cfg.aamvaVersion;
-  document.getElementById('bannerIIN').textContent   = cfg.iin;
-  document.getElementById('stateBanner').style.display = 'flex';
-
-  // revision selector
-  var revs = STATE_REVISIONS[selectedState] || [];
-  var revWrap = document.getElementById('revision-wrap');
-  var revSel  = document.getElementById('revisionSelect');
-  revSel.innerHTML = '';
-  if(revs.length > 0){
-    revs.forEach(function(r,i){
-      var o = document.createElement('option');
-      o.value = r.date; o.textContent = r.label;
-      if(i===0) o.selected = true;
-      revSel.appendChild(o);
-    });
-    revWrap.style.display = 'block';
-    setDateField('f_DDB', revs[0].date);
-  } else {
-    revWrap.style.display = 'none';
+  if(!state||!dcs||!dac||!daq||!dbb||!dbd||!dba||!dbc||!dag||!dai||!daj||!dak){
+    throw new Error('Please fill all required fields (marked with *).');
   }
 
-  // auto-fill DL number if empty
-  var dlField = document.getElementById('f_DAQ');
-  if(!dlField.value) dlField.value = generateDLNumber(selectedState);
+  // Control chars
+  const RS  = '\x1e';  // Record Separator
+  const GS  = '\x1d';  // Group Separator (not used in subfile but kept for clarity)
+  const LF  = '\x0a';  // Line Feed (element terminator in some versions)
+  const CR  = '\x0d';  // Carriage Return
+  const SUB = '@';      // Subfile designator prefix
 
-  // auto-fill DCF & DCK
-  var dcfField = document.getElementById('f_DCF');
-  var dckField = document.getElementById('f_DCK');
-  if(!dcfField.value) dcfField.value = generateDCF(selectedState);
-  if(!dckField.value) dckField.value = generateICN(selectedState, dlField.value, cfg.iin);
+  // Build subfile data elements (each ends with CR LF in AAMVA)
+  let elements = [];
 
-  // default dates
-  if(!document.getElementById('f_DBD').value) setDateField('f_DBD', formatToday());
-  if(!document.getElementById('f_DBA').value) setDateField('f_DBA', formatFuture(5));
+  // Mandatory
+  elements.push('DCS'+dcs);
+  elements.push('DAC'+dac);
+  if(dad) elements.push('DAD'+dad);
+  if(dcu) elements.push('DCU'+dcu);
+  elements.push('DAQ'+daq);
+  elements.push('DBB'+dbb);
+  elements.push('DBD'+dbd);
+  elements.push('DBA'+dba);
+  elements.push('DBC'+dbc);
+  if(day) elements.push('DAY'+day);
+  if(daz) elements.push('DAZ'+daz);
+  if(dau) elements.push('DAU'+dau);
+  if(daw) elements.push('DAW'+daw);
+  elements.push('DAG'+dag);
+  if(dah) elements.push('DAH'+dah);
+  elements.push('DAI'+dai);
+  elements.push('DAJ'+daj);
+  elements.push('DAK'+dak);
+  elements.push('DCG'+dcg);
+  // Optional
+  if(dcl) elements.push('DCL'+dcl);
+  if(ddk) elements.push('DDK'+ddk);
+  if(ddl) elements.push('DDL'+ddl);
+  if(ddh) elements.push('DDH'+ddh);
+  if(ddi) elements.push('DDI'+ddi);
+  if(ddd) elements.push('DDD'+ddd);
+  // DCF, DDE required by many states — add placeholders
+  elements.push('DCF'+daq.slice(0,25));
+  elements.push('DDE'+'N');  // name truncation: N = not truncated
+
+  const elementData = elements.join('\n') + '\n';
+
+  // Subfile type + offset + length
+  const subfileType = docType;  // DL or ID
+  // Header is 21 bytes fixed
+  // Subfile header: 2 (type) + 4 (offset) + 4 (length) = 10 bytes per entry
+  // AAMVA header: @\n\x1e\rANSI + IIN(6) + AAMVA ver(2) + jurisdiction ver(2) + num subfiles(2) = 21 bytes
+  const headerLen = 21;
+  const subfileHeaderLen = 10;
+  const subfileOffset = headerLen + subfileHeaderLen;  // = 31
+  const subfileLength = elementData.length + 2;  // +2 for subfile type designation
+  const offsetStr = String(subfileOffset).padStart(4,'0');
+  const lengthStr = String(subfileLength).padStart(4,'0');
+
+  // AAMVA Header
+  // Format: @LF RS CR ANSI (space) IIN AAMVAVER JURISVER NUMSUBFILES
+  const header = '@' + LF + RS + CR
+    + 'ANSI ' + iin
+    + ver  // AAMVA version (2 digits)
+    + '00'  // jurisdiction version
+    + '01'  // number of subfiles
+    + subfileType + offsetStr + lengthStr;
+
+  const subfileData = subfileType + elementData;
+  return header + subfileData;
 }
 
-function onRevisionChange(){
-  var sel = document.getElementById('revisionSelect');
-  setDateField('f_DDB', sel.value);
-}
+// ===== BARCODE DRAW =====
+let lastPayload = null;
+let lastState   = 'TX';
 
-function setDateField(id, val){
-  var el = document.getElementById(id);
-  if(el) el.value = val;
-}
-
-function formatToday(){
-  var d = new Date();
-  return pad2(d.getMonth()+1)+'/'+pad2(d.getDate())+'/'+d.getFullYear();
-}
-function formatFuture(yrs){
-  var d = new Date();
-  d.setFullYear(d.getFullYear()+yrs);
-  return pad2(d.getMonth()+1)+'/'+pad2(d.getDate())+'/'+d.getFullYear();
-}
-function pad2(n){ return n<10?'0'+n:String(n); }
-
-// ── Date auto-format (MM/DD/YYYY) ──────────────────────────────────────
-var DATE_FIELD_IDS = ['f_DBB','f_DBA','f_DBD','f_DDJ'];
-DATE_FIELD_IDS.forEach(function(id){
-  var el = document.getElementById(id);
-  if(!el) return;
-  el.addEventListener('input', function(e){
-    var raw = el.value.replace(/\D/g,'');
-    if(raw.length >= 5)      el.value = raw.slice(0,2)+'/'+raw.slice(2,4)+'/'+raw.slice(4,8);
-    else if(raw.length >= 3) el.value = raw.slice(0,2)+'/'+raw.slice(2);
-    else                     el.value = raw;
-  });
-});
-
-// ── Auto-uppercase text fields ─────────────────────────────────────────
-document.querySelectorAll('input[type=text]').forEach(function(el){
-  if(DATE_FIELD_IDS.includes(el.id)) return;
-  el.addEventListener('input', function(){ el.value = el.value.toUpperCase(); });
-});
-
-// ── Auto-regen DCF/DCK when DL# changes ───────────────────────────────
-document.getElementById('f_DAQ').addEventListener('input', function(){
-  var cfg = getStateConfig(selectedState);
-  if(!cfg) return;
-  document.getElementById('f_DCF').value = generateDCF(selectedState);
-  document.getElementById('f_DCK').value = generateICN(selectedState, this.value, cfg.iin);
-});
-
-// ── Collect form data ──────────────────────────────────────────────────
-function collectFormData(){
-  var data = {};
-  document.querySelectorAll('#aamvaForm input, #aamvaForm select').forEach(function(el){
-    if(el.name) data[el.name] = el.value.trim();
-  });
-  var revSel = document.getElementById('revisionSelect');
-  if(revSel && revSel.value) data.DDB = revSel.value;
-  data.DAJ = selectedState;
-  return data;
-}
-
-// ── Validation ─────────────────────────────────────────────────────────
-function showValidationErrors(errors){
-  document.querySelectorAll('.error-field').forEach(function(el){ el.classList.remove('error-field'); });
-  document.querySelectorAll('.field-error').forEach(function(el){ el.remove(); });
-
-  var summary = document.getElementById('valSummary');
-  var list    = document.getElementById('valList');
-  list.innerHTML = '';
-
-  errors.forEach(function(e){
-    var el = document.querySelector('[name="'+e.field+'"]');
-    if(el){
-      el.classList.add('error-field');
-      var msg = document.createElement('span');
-      msg.className = 'field-error';
-      msg.textContent = e.message;
-      el.parentNode.appendChild(msg);
-    }
-    var li = document.createElement('li');
-    li.textContent = e.message;
-    list.appendChild(li);
-  });
-
-  summary.classList.toggle('show', errors.length > 0);
-  if(errors.length > 0) summary.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-// ── Generate ───────────────────────────────────────────────────────────
-function handleGenerate(){
-  var data   = collectFormData();
-  var errors = validateAAMVAData(data);
-  showValidationErrors(errors);
-  if(errors.length > 0){
-    showToast('Please fix '+errors.length+' error(s) before continuing.', 'error');
-    return;
-  }
+function drawBarcode(payload, stateCode) {
+  const canvas   = document.getElementById('barcodeCanvas');
+  const ecl      = parseInt(sECL.value);
+  const ar       = parseFloat(sAR.value);
+  const COLS     = 15;  // hardcoded per AAMVA spec
+  const status   = document.getElementById('encodeStatus');
 
   try {
-    var payload = encodeAAMVA(data, selectedState);
-    generatedPayload = payload;
-    renderPreview(data, payload);
-    goStep(3);
-  } catch(ex) {
-    showToast('Encoding error: '+ex.message, 'error');
-    console.error(ex);
+    PDF417.draw(payload, canvas, ar, ecl, COLS, 0);
+    document.getElementById('barcodePlaceholder').style.display = 'none';
+    canvas.style.display = 'block';
+    document.getElementById('barcodeMeta').textContent =
+      canvas.width + ' × ' + canvas.height + ' px · ' + COLS + ' cols · ECL ' + ecl + ' · PDF417';
+    status.textContent = '✓ Encoded';
+    status.className   = 'encode-status visible ok';
+    document.getElementById('btnDownload').disabled = false;
+    document.getElementById('btnRegen').disabled    = false;
+    lastPayload = payload;
+    lastState   = stateCode;
+  } catch(e) {
+    status.textContent = '⚠ ' + (e.message || 'Draw error');
+    status.className   = 'encode-status visible err';
+    console.error('PDF417 draw error:', e);
   }
 }
 
-// ── Regenerate barcode with new ECL / aspect (Phase 4) ────────────────
-function regenerateBarcode(){
-  if(!generatedPayload) return;
-  drawBarcode(generatedPayload);
+function regenerateBarcode() {
+  if(lastPayload) drawBarcode(lastPayload, lastState);
 }
 
-// ── Core draw wrapper — columns=15, aspect + ECL from controls ─────────
-function drawBarcode(payload){
-  var canvas  = document.getElementById('barcodeCanvas');
-  var ecl     = getBarcodeECL();
-  var aspect  = getBarcodeAspect();
+// ===== DISPLAY RAW STRING =====
+function displayRaw(str) {
+  const bytes = new TextEncoder().encode(str).length;
+  document.getElementById('rawBytesBadge').textContent = bytes + ' bytes';
 
+  // Count data elements (lines with 3-char ID)
+  const lines = str.split('\n').filter(l => /^[A-Z]{3}/.test(l));
+  document.getElementById('rawStats').textContent =
+    bytes + ' chars · ' + lines.length + ' data elements';
+
+  // Render with visible control chars
+  const escaped = str
+    .replace(/\x1e/g, '<span class="ctrl">[←RS]</span>')
+    .replace(/\x0d/g, '<span class="ctrl">[↵CR]</span>')
+    .replace(/\x0a/g, '<span class="ctrl">[↴LF]</span>\n')
+    .replace(/\x1d/g, '<span class="ctrl">[GS]</span>');
+  document.getElementById('rawOutput').innerHTML = escaped;
+}
+
+// ===== GENERATE BUTTON =====
+document.getElementById('btnGenerate').addEventListener('click', () => {
   try {
-    // PDF417.draw(text, canvas, aspectRatio, securityLevel, columns, rows)
-    // columns=15 hardcoded; rows=0 means auto
-    PDF417.draw(payload, canvas, aspect, ecl, BARCODE_COLUMNS, 0);
-
-    // update meta
-    document.getElementById('barcodeInfo').textContent =
-      canvas.width + ' × ' + canvas.height + ' px  ·  ' +
-      BARCODE_COLUMNS + ' cols  ·  ECL ' + ecl + '  ·  PDF417';
-
-    // status badge
-    var badge = document.getElementById('encodeStatus');
-    badge.className = 'encode-status ok';
-    badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Encoded';
-
-  } catch(ex) {
-    var badge = document.getElementById('encodeStatus');
-    badge.className = 'encode-status err';
-    badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Error';
-    showToast('Draw error: ' + ex.message, 'error');
-    console.error('PDF417.draw error', ex);
+    const payload = buildAAMVA();
+    const state   = document.getElementById('fIssuerState').value || 'XX';
+    displayRaw(payload);
+    drawBarcode(payload, state);
+  } catch(e) {
+    alert(e.message);
   }
-}
+});
 
-// ── Render preview ─────────────────────────────────────────────────────
-var FIELD_LABELS = {
-  DAQ:'License #', DCS:'Last Name', DAC:'First Name', DAD:'Middle Name',
-  DBB:'Date of Birth', DBC:'Sex', DAY:'Eye Color', DAZ:'Hair Color',
-  DAU:'Height', DAW:'Weight', DAG:'Address', DAI:'City', DAK:'ZIP',
-  DBA:'Expires', DBD:'Issued', DCF:'Doc Discriminator', DCK:'ICN',
-  DCA:'Class', DCB:'Restrictions', DCD:'Endorsements', DDA:'Compliance',
-  DDB:'Card Rev. Date', DCG:'Country', DDK:'Organ Donor', DDL:'Veteran',
-};
-var SEX_MAP  = {'1':'Male','2':'Female','9':'Not Specified'};
-
-function renderPreview(data, payload){
-  // ── Barcode (Phase 4 draw call) ────────────────────────────────────
-  drawBarcode(payload);
-
-  // ── Field summary table ────────────────────────────────────────────
-  var tbody = document.querySelector('#dlTable tbody');
-  tbody.innerHTML = '';
-  var shown = ['DAQ','DCS','DAC','DAD','DBB','DBC','DAY','DAZ','DAU','DAW',
-               'DAG','DAI','DAK','DBA','DBD','DCA','DCB','DCD','DCF','DCK',
-               'DDA','DDB','DCG','DDK','DDL'];
-  shown.forEach(function(code){
-    var val = data[code];
-    if(!val) return;
-    var display = val;
-    if(code==='DBC') display = SEX_MAP[val]||val;
-    var tr = document.createElement('tr');
-    tr.innerHTML = '<th>'+code+'</th><td>'+(FIELD_LABELS[code]||code)+'</td><td>'+escHtml(display)+'</td>';
-    tbody.appendChild(tr);
-  });
-
-  // ── Raw AAMVA string (Phase 4) ─────────────────────────────────────
-  renderRawString(payload);
-}
-
-// ── Render raw AAMVA string with highlighted control chars ─────────────
-function renderRawString(payload){
-  // byte count (UTF-8 approximate — AAMVA is ASCII)
-  var bytes = payload.length;
-  document.getElementById('rawByteCount').textContent = bytes + ' bytes';
-
-  // count data elements (lines starting with D-code pattern)
-  var elementMatches = payload.match(/\bD[A-Z]{2}/g);
-  var elementCount = elementMatches ? elementMatches.length : 0;
-
-  document.getElementById('rawLengthInfo').textContent =
-    bytes + ' chars · ' + elementCount + ' data elements';
-
-  // pretty-print control characters
-  var pretty = payload
-    .replace(/\x1E/g,  '[\u2190RS]')   // Record Separator
-    .replace(/\x0D/g,  '[\u21B5CR]\n') // Carriage Return → newline for readability
-    .replace(/\x0A/g,  '[\u21B4LF]\n') // Line Feed
-    .replace(/\x1C/g,  '[\u2190FS]')   // Field Separator (some states)
-    .replace(/\x40/g, '@');             // @ passthrough
-
-  document.getElementById('rawOutput').textContent = pretty;
-}
-
-// ── Collapsible raw panel ──────────────────────────────────────────────
-function toggleRaw(){
-  var btn   = document.getElementById('rawToggle');
-  var panel = document.getElementById('rawPanel');
-  var open  = panel.classList.toggle('open');
-  btn.classList.toggle('open', open);
-  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-
-// ── Copy raw to clipboard ──────────────────────────────────────────────
-function copyRaw(){
-  if(!generatedPayload){
-    showToast('No barcode generated yet.', 'error');
-    return;
-  }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(generatedPayload).then(function(){
-      showToast('Raw AAMVA string copied to clipboard.', 'success');
-    }).catch(function(){
-      fallbackCopy(generatedPayload);
-    });
-  } else {
-    fallbackCopy(generatedPayload);
-  }
-}
-function fallbackCopy(text){
-  var ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  try { document.execCommand('copy'); showToast('Copied to clipboard.', 'success'); }
-  catch(e){ showToast('Copy failed — select text manually.', 'error'); }
-  document.body.removeChild(ta);
-}
-
-function escHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── Download PNG ───────────────────────────────────────────────────────
-function downloadPNG(){
-  var canvas = document.getElementById('barcodeCanvas');
-  if(canvas.width === 0 || canvas.height === 0){
-    showToast('Barcode not ready yet.', 'error');
-    return;
-  }
-
-  // create white-bg offscreen canvas for guaranteed clean PNG
-  var off = document.createElement('canvas');
-  off.width  = canvas.width;
-  off.height = canvas.height;
-  var ctx = off.getContext('2d');
+// ===== DOWNLOAD PNG =====
+document.getElementById('btnDownload').addEventListener('click', () => {
+  const src = document.getElementById('barcodeCanvas');
+  if(!src.width) return;
+  // Render to offscreen with white background
+  const off = document.createElement('canvas');
+  off.width  = src.width;
+  off.height = src.height;
+  const ctx = off.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, off.width, off.height);
-  ctx.drawImage(canvas, 0, 0);
+  ctx.drawImage(src, 0, 0);
+  off.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = 'aamva-pdf417-' + lastState + '.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+});
 
-  var a = document.createElement('a');
-  a.href     = off.toDataURL('image/png');
-  a.download = 'aamva-pdf417-' + (selectedState||'XX') + '.png';
-  a.click();
-  showToast('Downloaded aamva-pdf417-' + (selectedState||'XX') + '.png', 'success');
+// ===== RE-DRAW =====
+document.getElementById('btnRegen').addEventListener('click', regenerateBarcode);
+
+// ===== RAW TOGGLE =====
+const rawToggle = document.getElementById('rawToggle');
+const rawBody   = document.getElementById('rawBody');
+rawToggle.addEventListener('click', () => {
+  const open = rawToggle.getAttribute('aria-expanded') === 'true';
+  rawToggle.setAttribute('aria-expanded', String(!open));
+  rawBody.classList.toggle('open', !open);
+});
+
+// ===== COPY =====
+document.getElementById('btnCopy').addEventListener('click', () => {
+  const text = lastPayload || '';
+  if(!text) return;
+  if(navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showCopied());
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopied();
+  }
+});
+function showCopied() {
+  const btn = document.getElementById('btnCopy');
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1500);
 }
 
-// ── Reset ──────────────────────────────────────────────────────────────
-function resetAll(){
-  selectedState    = null;
-  generatedPayload = null;
-  document.getElementById('aamvaForm').reset();
-  document.querySelectorAll('.state-btn').forEach(function(b){ b.classList.remove('selected'); });
-  document.getElementById('step1Next').disabled = true;
-  document.getElementById('valSummary').classList.remove('show');
-  // collapse raw panel
-  document.getElementById('rawPanel').classList.remove('open');
-  document.getElementById('rawToggle').classList.remove('open');
-  document.getElementById('rawToggle').setAttribute('aria-expanded','false');
-  goStep(1);
-}
-
-// ── Toast ──────────────────────────────────────────────────────────────
-var _toastTimer;
-function showToast(msg, type){
-  var t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show ' + (type||'');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(function(){
-    t.classList.remove('show');
-  }, 3200);
-}
+// ===== RESET =====
+document.getElementById('btnReset').addEventListener('click', () => {
+  document.querySelectorAll('input,select').forEach(el => {
+    if(el.tagName==='SELECT') el.selectedIndex=0;
+    else if(el.type!=='range') el.value='';
+  });
+  // restore defaults
+  document.getElementById('fIIN').value    = '636000';
+  document.getElementById('fAamvaVer').value = '09';
+  document.getElementById('fDCG').value    = 'USA';
+  document.getElementById('fDocType').value = 'DL';
+  sECL.value = '4';
+  sAR.value  = '2';
+  document.getElementById('eclVal').textContent = 'ECL 4';
+  document.getElementById('arVal').textContent  = '2.0';
+  lastPayload = null;
+  const canvas = document.getElementById('barcodeCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  canvas.style.display='none';
+  document.getElementById('barcodePlaceholder').style.display='';
+  document.getElementById('barcodeMeta').textContent='';
+  document.getElementById('btnDownload').disabled=true;
+  document.getElementById('btnRegen').disabled=true;
+  document.getElementById('encodeStatus').className='encode-status';
+  document.getElementById('rawBytesBadge').textContent='— bytes';
+  document.getElementById('rawStats').textContent='—';
+  document.getElementById('rawOutput').innerHTML='<span style="color:var(--color-text-faint)">No data yet.</span>';
+  rawToggle.setAttribute('aria-expanded','false');
+  rawBody.classList.remove('open');
+});
 </script>
 </body>
 </html>
