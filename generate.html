@@ -27,47 +27,21 @@
       min-height: 100vh;
       padding: 24px;
     }
-    h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      margin-bottom: 4px;
-    }
+    h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
     .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
     .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
     /* ── Panel ── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .panel-header {
-      padding: 12px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-    }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .panel-header { padding: 12px 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface2); }
     .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
     /* ── Form fields ── */
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
     input[type="text"], input[type="date"], select {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 7px 10px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.15s;
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 7px 10px; font-size: 13px; outline: none; transition: border-color 0.15s;
     }
     input:focus, select:focus { border-color: var(--accent); }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -75,32 +49,30 @@
 
     /* ── Slider control ── */
     .slider-row { display: flex; align-items: center; gap: 10px; }
-    .slider-row input[type="range"] {
-      flex: 1;
-      accent-color: var(--accent);
-      height: 4px;
-      cursor: pointer;
-    }
-    .slider-val {
-      min-width: 42px;
-      text-align: right;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--accent);
+    .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+    .slider-val { min-width: 42px; text-align: right; font-size: 13px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    /* ── ECL row: slider + number input ── */
+    .ecl-row { display: flex; align-items: center; gap: 10px; }
+    .ecl-row input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+    .ecl-number {
+      width: 58px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--accent); padding: 5px 8px;
+      font-size: 14px; font-weight: 700; text-align: center;
+      outline: none; transition: border-color 0.15s;
       font-variant-numeric: tabular-nums;
     }
+    .ecl-number:focus { border-color: var(--accent); }
+    .ecl-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .ecl-preset {
+      padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--muted); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s;
+    }
+    .ecl-preset:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── Buttons ── */
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 9px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: background 0.15s, opacity 0.15s;
-    }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s, opacity 0.15s; }
     .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 4px; }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-download { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
@@ -108,81 +80,18 @@
 
     /* ── Barcode output ── */
     .output-panel { position: sticky; top: 24px; }
-    .barcode-wrap {
-      padding: 20px;
-      background: #fff;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 120px;
-    }
+    .barcode-wrap { padding: 20px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-height: 120px; overflow-x: auto; }
     #barcode { max-width: 100%; height: auto; display: block; image-rendering: pixelated; }
-    .meta-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px;
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .meta-row .badge {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--green);
-    }
+    .meta-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
     .raw-panel .panel-body { padding: 12px 16px; }
-    #rawString {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: #6ee7b7;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      padding: 10px;
-      resize: vertical;
-      min-height: 90px;
-      outline: none;
-    }
-    .section-divider {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding: 4px 0 2px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 4px;
-    }
-    .ecl-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
-    }
-    .ecl-btn {
-      padding: 7px 0;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.12s;
-      text-align: center;
-    }
-    .ecl-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .ecl-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #rawString { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: #6ee7b7; font-family: 'Courier New', monospace; font-size: 11px; padding: 10px; resize: vertical; min-height: 90px; outline: none; }
+    .section-divider { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 4px 0 2px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
   </style>
 </head>
 <body>
 
 <h1>PDF417 AAMVA Generator</h1>
-<p class="subtitle">Replica-quality barcode tuning — ECL 0–5 · Aspect Ratio 0.5–20.0 · Column control</p>
+<p class="subtitle">Replica-quality barcode tuning — ECL 0–100 · Aspect Ratio 0.5–20.0 · Column control</p>
 
 <div class="layout">
 
@@ -280,17 +189,31 @@
       <div class="panel-header">Barcode Settings</div>
       <div class="panel-body">
 
-        <div class="section-divider">Error Correction Level (ECL)</div>
-        <div class="ecl-grid" id="eclGrid">
-          <button class="ecl-btn" data-ecl="0" onclick="setECL(0)">0</button>
-          <button class="ecl-btn" data-ecl="1" onclick="setECL(1)">1</button>
-          <button class="ecl-btn active" data-ecl="2" onclick="setECL(2)">2</button>
-          <button class="ecl-btn" data-ecl="3" onclick="setECL(3)">3</button>
-          <button class="ecl-btn" data-ecl="4" onclick="setECL(4)">4</button>
-          <button class="ecl-btn" data-ecl="5" onclick="setECL(5)">5</button>
+        <!-- ECL 0–100 -->
+        <div class="section-divider">Error Correction Level (ECL) — 0 to 100</div>
+        <div class="ecl-row">
+          <input type="range" id="eclSlider" min="0" max="100" step="1" value="2" oninput="syncECLFromSlider()" />
+          <input type="number" id="eclNumber" class="ecl-number" min="0" max="100" step="1" value="2" oninput="syncECLFromNumber()" onchange="syncECLFromNumber()" />
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Lower ECL = fewer error correction codewords = more data columns visible. ECL 0–1 best matches dense real-world DL barcodes.</p>
+        <!-- Quick preset buttons -->
+        <div class="ecl-presets">
+          <span style="font-size:11px;color:var(--muted);align-self:center;">Quick:</span>
+          <button class="ecl-preset" onclick="setECL(0)">0</button>
+          <button class="ecl-preset" onclick="setECL(1)">1</button>
+          <button class="ecl-preset" onclick="setECL(2)">2</button>
+          <button class="ecl-preset" onclick="setECL(3)">3</button>
+          <button class="ecl-preset" onclick="setECL(5)">5</button>
+          <button class="ecl-preset" onclick="setECL(10)">10</button>
+          <button class="ecl-preset" onclick="setECL(20)">20</button>
+          <button class="ecl-preset" onclick="setECL(50)">50</button>
+          <button class="ecl-preset" onclick="setECL(100)">100</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">
+          Lower ECL = fewer error-correction codewords = denser data pattern. ECL 0–2 best matches real DL barcodes.
+          Drag the slider or type any value 0–100 directly.
+        </p>
 
+        <!-- Aspect Ratio -->
         <div class="section-divider" style="margin-top:8px;">Aspect Ratio</div>
         <div class="slider-row">
           <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="5.0" oninput="updateAR()" />
@@ -298,6 +221,7 @@
         </div>
         <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode (more columns). Range 0.5–20.0 in 0.1 steps.</p>
 
+        <!-- Columns Override -->
         <div class="section-divider" style="margin-top:8px;">Columns Override</div>
         <div class="slider-row">
           <input type="range" id="colCount" min="0" max="30" step="1" value="0" oninput="updateCols()" />
@@ -305,6 +229,7 @@
         </div>
         <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = let aspect ratio decide. 1–30 forces a specific column count.</p>
 
+        <!-- Bar Width -->
         <div class="section-divider" style="margin-top:8px;">Bar Width (px)</div>
         <div class="slider-row">
           <input type="range" id="barWidth" min="1" max="6" step="1" value="2" oninput="updateBarWidth()" />
@@ -356,19 +281,37 @@
 
 <script>
   // ── State ──
-  var currentECL = 2;
-  var currentAR  = 5.0;
+  var currentECL  = 2;
+  var currentAR   = 5.0;
   var currentCols = 0;
-  var currentBW  = 2;
+  var currentBW   = 2;
 
-  function setECL(n) {
-    currentECL = n;
-    document.querySelectorAll('.ecl-btn').forEach(function(b){
-      b.classList.toggle('active', parseInt(b.dataset.ecl) === n);
-    });
+  // ── ECL sync (slider ↔ number input) ──
+  function syncECLFromSlider() {
+    var val = parseInt(document.getElementById('eclSlider').value);
+    document.getElementById('eclNumber').value = val;
+    currentECL = val;
     generate();
   }
 
+  function syncECLFromNumber() {
+    var raw = parseInt(document.getElementById('eclNumber').value);
+    if (isNaN(raw)) return;
+    var val = Math.min(100, Math.max(0, raw));
+    document.getElementById('eclNumber').value = val;
+    document.getElementById('eclSlider').value = val;
+    currentECL = val;
+    generate();
+  }
+
+  function setECL(n) {
+    document.getElementById('eclSlider').value  = n;
+    document.getElementById('eclNumber').value  = n;
+    currentECL = n;
+    generate();
+  }
+
+  // ── Other controls ──
   function updateAR() {
     currentAR = parseFloat(document.getElementById('aspectRatio').value);
     document.getElementById('arVal').textContent = currentAR.toFixed(1);
@@ -390,7 +333,6 @@
   // ── AAMVA string builder ──
   function buildAAMVA() {
     var RS = String.fromCharCode(30);
-    var GS = String.fromCharCode(29);
     var CR = String.fromCharCode(13);
     var LF = String.fromCharCode(10);
 
@@ -403,73 +345,40 @@
     var lastName  = v('lastName')  || 'SAMPLE';
     var firstName = v('firstName') || 'DRIVER';
     var midName   = v('middleName')|| '';
-
     var dob    = v('dob')    || '19900101';
     var expiry = v('expiry') || '20301231';
     var issued = v('issued') || '20200101';
-
     var sex       = v('sex')       || '1';
     var eyeColor  = v('eyeColor')  || 'BRO';
     var hairColor = v('hairColor') || 'BRO';
     var height    = v('height')    || '069 in';
     var weight    = v('weight')    || '170';
-
     var street    = v('street')    || '1234 MAIN ST';
     var city      = v('city')      || 'ANYTOWN';
     var addrState = v('addrState') || state;
     var zip       = v('zip')       || '750010000';
-
     var dlNum     = v('dlNumber')     || '12345678';
     var dlClass   = v('dlClass')      || 'C';
     var restrict  = v('restrictions') || 'NONE';
     var endorse   = v('endorsements') || 'NONE';
 
-    // Subfile type DL, one subfile
-    var numEntries = '01';
-    var subfileDesignator = 'DL';
-
-    // Build the subfile data
     var fields = [
-      'DCS' + lastName,
-      'DAC' + firstName,
-      'DAD' + midName,
-      'DBB' + dob,
-      'DBA' + expiry,
-      'DBD' + issued,
-      'DBC' + sex,
-      'DAY' + eyeColor,
-      'DAZ' + hairColor,
-      'DAU' + height,
-      'DAW' + weight,
-      'DAG' + street,
-      'DAI' + city,
-      'DAJ' + addrState,
-      'DAK' + zip,
-      'DAQ' + dlNum,
-      'DCA' + dlClass,
-      'DCB' + restrict,
-      'DCD' + endorse,
-      'DCF' + iin + dlNum,
-      'DCG' + country,
-      'DDE' + 'N',
-      'DDF' + 'N',
-      'DDG' + 'N'
+      'DCS' + lastName, 'DAC' + firstName, 'DAD' + midName,
+      'DBB' + dob, 'DBA' + expiry, 'DBD' + issued,
+      'DBC' + sex, 'DAY' + eyeColor, 'DAZ' + hairColor,
+      'DAU' + height, 'DAW' + weight,
+      'DAG' + street, 'DAI' + city, 'DAJ' + addrState, 'DAK' + zip,
+      'DAQ' + dlNum, 'DCA' + dlClass, 'DCB' + restrict, 'DCD' + endorse,
+      'DCF' + iin + dlNum, 'DCG' + country,
+      'DDE' + 'N', 'DDF' + 'N', 'DDG' + 'N'
     ];
 
     var subfileData = fields.join(LF) + LF;
-
-    // Header: @\n\x1e\rANSI <iin><aamvaVer><jurVer><numEntries><designator><offset><length>
-    // Offset = header length (fixed 20 chars for ANSI header + 10 per entry = header is 10 + 2 + numEntries*10)
-    // Simplified standard header:
     var headerFixed = '@\n' + RS + CR + 'ANSI ' + iin + aamvaVer + jurVer;
-    // numEntries + subfile designator + offset (10 chars, 0-padded) + length (10 chars, 0-padded)
-    var headerLen = headerFixed.length + 2 + 2 + 4 + 4; // numEntries(2) + subfileType(2) + offset(4) + length(4)
-    var dataLen = subfileData.length;
-    var offsetStr  = pad4(headerLen + 1);  // +1 for the leading @
-    var lengthStr  = pad4(dataLen);
-
-    var aamva = headerFixed + numEntries + subfileDesignator + offsetStr + lengthStr + subfileData;
-    return aamva;
+    var headerLen = headerFixed.length + 2 + 2 + 4 + 4;
+    var offsetStr = pad4(headerLen + 1);
+    var lengthStr = pad4(subfileData.length);
+    return headerFixed + '01' + 'DL' + offsetStr + lengthStr + subfileData;
   }
 
   function pad4(n) { return String(n).padStart(4, '0'); }
@@ -493,22 +402,20 @@
 
   function drawBarcode(str) {
     var canvas = document.getElementById('barcode');
-    var opts = { ecl: currentECL, ratio: currentAR, bw: currentBW };
-    if (currentCols > 0) opts.cols = currentCols;
+    var cols = currentCols > 0 ? currentCols : undefined;
     try {
-      PDF417.draw(str, canvas, opts.ratio, opts.ecl, opts.cols || undefined, opts.bw);
-      var meta = canvas.width + ' × ' + canvas.height + ' px';
-      document.getElementById('metaInfo').textContent = meta;
+      PDF417.draw(str, canvas, currentAR, currentECL, cols, currentBW);
+      document.getElementById('metaInfo').textContent =
+        canvas.width + ' × ' + canvas.height + ' px  |  ECL ' + currentECL + '  |  AR ' + currentAR.toFixed(1);
     } catch(e) {
       document.getElementById('metaInfo').textContent = 'Error: ' + e.message;
     }
   }
 
-  // ── Download helpers ──
+  // ── Downloads ──
   function downloadPNG() {
-    var canvas = document.getElementById('barcode');
     var a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
+    a.href = document.getElementById('barcode').toDataURL('image/png');
     a.download = 'aamva-pdf417.png';
     a.click();
   }
@@ -516,37 +423,28 @@
   function downloadSVG() {
     var canvas = document.getElementById('barcode');
     var w = canvas.width, h = canvas.height;
-    var ctx = canvas.getContext('2d');
-    var imgData = ctx.getImageData(0, 0, w, h);
+    var imgData = canvas.getContext('2d').getImageData(0, 0, w, h);
     var rects = [];
     for (var y = 0; y < h; y++) {
-      var xStart = -1;
+      var xs = -1;
       for (var x = 0; x <= w; x++) {
-        var idx = (y * w + x) * 4;
-        var dark = x < w && imgData.data[idx] < 128;
-        if (dark && xStart === -1) xStart = x;
-        else if (!dark && xStart !== -1) {
-          rects.push('<rect x="'+xStart+'" y="'+y+'" width="'+(x-xStart)+'" height="1"/>');
-          xStart = -1;
-        }
+        var dark = x < w && imgData.data[(y * w + x) * 4] < 128;
+        if (dark && xs === -1) xs = x;
+        else if (!dark && xs !== -1) { rects.push('<rect x="'+xs+'" y="'+y+'" width="'+(x-xs)+'" height="1"/>'); xs = -1; }
       }
     }
     var svg = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'"><g fill="#000">'+rects.join('')+'</g></svg>';
-    var blob = new Blob([svg], {type:'image/svg+xml'});
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
     a.download = 'aamva-pdf417.svg';
     a.click();
   }
 
   function copyRaw() {
-    var ta = document.getElementById('rawString');
-    navigator.clipboard.writeText(ta.value).then(function(){
-      alert('Copied to clipboard!');
-    });
+    navigator.clipboard.writeText(document.getElementById('rawString').value)
+      .then(function(){ alert('Copied to clipboard!'); });
   }
 
-  // ── Init ──
   window.onload = function() { generate(); };
 </script>
 </body>
