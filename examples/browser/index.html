@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html>
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	    <title>PDF417 - HUB3 Barcode Generator</title>
+
+        <link href="main.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body>
+        <div id="barcode-wrap">
+            <canvas id="barcode"></canvas>
+        </div>
+        <div id="form-wrap">
+            <form id="form">
+                <p>
+                    <label>Amount (cents)</label>
+                    <input type="text" id="amount" value="12355" />
+                </p>
+                <p>
+                    <label>Sender Name</label>
+                    <input type="text" id="sender_name" value="PETAR KORE" />
+                </p>
+                <p>
+                    <label>Sender Street</label>
+                    <input type="text" id="sender_street" value="PREVOJ DD" />
+                </p>
+                <p>
+                    <label>Sender City</label>
+                    <input type="text" id="sender_city" value="10000 Zagreb" />
+                </p>
+                <p>
+                    <label>Receiver Name</label>
+                    <input type="text" id="receiver_name" value="pkoretic J.D.O.O" />
+                </p>
+                <p>
+                    <label>Receiver Street</label>
+                    <input type="text" id="receiver_street" value="PREVOJ DD" />
+                </p>
+                <p>
+                    <label>Receiver City</label>
+                    <input type="text" id="receiver_city" value="10000 ZAGREB" />
+                </p>
+                <p>
+                    <label>Receiver IBAN</label>
+                    <input type="text" id="receiver_iban" value="HR1210010051863000160" />
+                </p>
+                <p>
+                    <label>Receiver Model</label>
+                    <input type="text" id="receiver_model" value="HR01" />
+                </p>
+                <p>
+                    <label>Receiver Reference</label>
+                    <input type="text" id="receiver_reference" value="7336-68949637625-00001" />
+                </p>
+                <p>
+                    <label>Purpose</label>
+                    <input type="text" id="purpose" value="COST" />
+                </p>
+                <p>
+                    <label>Description</label>
+                    <input type="text" id="description" value="Uplata za 1. mjesec" />
+                </p>
+                <button type="submit">Generate</button>
+            </form>
+        </div>
+        <script src="../../lib/pdf417.js" type="text/javascript"></script>
+        <script src="main.js" type="text/javascript"></script>
+    </body>
+</html>
