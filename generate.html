@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF417 AAMVA Barcode Generator</title>
+  <script src="./lib/pdf417.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f11;
+      --surface: #18181b;
+      --surface2: #1e1e22;
+      --border: #2e2e35;
+      --text: #e4e4e7;
+      --muted: #71717a;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --green: #22c55e;
+      --radius: 8px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Form fields ── */
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    input[type="text"], input[type="date"], select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    /* ── Slider control ── */
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+      cursor: pointer;
+    }
+    .slider-val {
+      min-width: 42px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 4px; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-download { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+    .btn-download:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Barcode output ── */
+    .output-panel { position: sticky; top: 24px; }
+    .barcode-wrap {
+      padding: 20px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+    }
+    #barcode { max-width: 100%; height: auto; display: block; image-rendering: pixelated; }
+    .meta-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .meta-row .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+    }
+    .raw-panel .panel-body { padding: 12px 16px; }
+    #rawString {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #6ee7b7;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 10px;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+    }
+    .section-divider {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 0 2px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .ecl-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+    .ecl-btn {
+      padding: 7px 0;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s;
+      text-align: center;
+    }
+    .ecl-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ecl-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  </style>
+</head>
+<body>
+
+<h1>PDF417 AAMVA Generator</h1>
+<p class="subtitle">Replica-quality barcode tuning — ECL 0–5 · Aspect Ratio 0.5–20.0 · Column control</p>
+
+<div class="layout">
+
+  <!-- ══ LEFT COLUMN: FORM ══ -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Issuer -->
+    <div class="panel">
+      <div class="panel-header">Issuer Info</div>
+      <div class="panel-body">
+        <div class="row3">
+          <div><label>Country</label><input type="text" id="country" value="USA" maxlength="3" /></div>
+          <div><label>State</label><input type="text" id="state" value="TX" maxlength="2" /></div>
+          <div><label>IIN</label><input type="text" id="iin" value="636015" maxlength="6" /></div>
+        </div>
+        <div class="row2">
+          <div><label>AAMVA Version</label><input type="text" id="aamvaVersion" value="08" maxlength="2" /></div>
+          <div><label>Jurisdiction Ver.</label><input type="text" id="jurisdictionVersion" value="01" maxlength="2" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Name -->
+    <div class="panel">
+      <div class="panel-header">Name</div>
+      <div class="panel-body">
+        <div><label>Last Name (DAB/DCS)</label><input type="text" id="lastName" value="SAMPLE" /></div>
+        <div class="row2">
+          <div><label>First Name (DAC)</label><input type="text" id="firstName" value="DRIVER" /></div>
+          <div><label>Middle Name (DAD)</label><input type="text" id="middleName" value="LICENSE" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dates -->
+    <div class="panel">
+      <div class="panel-header">Dates</div>
+      <div class="panel-body">
+        <div class="row3">
+          <div><label>DOB (DBB)</label><input type="text" id="dob" value="19900101" placeholder="MMDDYYYY" /></div>
+          <div><label>Expiry (DBA)</label><input type="text" id="expiry" value="20300101" placeholder="MMDDYYYY" /></div>
+          <div><label>Issue (DBD)</label><input type="text" id="issued" value="20200101" placeholder="MMDDYYYY" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Physical -->
+    <div class="panel">
+      <div class="panel-header">Physical Characteristics</div>
+      <div class="panel-body">
+        <div class="row3">
+          <div><label>Sex (DBC)</label>
+            <select id="sex"><option value="1">M (1)</option><option value="2">F (2)</option></select>
+          </div>
+          <div><label>Eye Color (DAY)</label><input type="text" id="eyeColor" value="BRO" maxlength="3" /></div>
+          <div><label>Hair Color (DAZ)</label><input type="text" id="hairColor" value="BRO" maxlength="3" /></div>
+        </div>
+        <div class="row2">
+          <div><label>Height (DAU) in/cm</label><input type="text" id="height" value="069 in" /></div>
+          <div><label>Weight (DAW) lbs</label><input type="text" id="weight" value="170" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Address -->
+    <div class="panel">
+      <div class="panel-header">Address</div>
+      <div class="panel-body">
+        <div><label>Street (DAG)</label><input type="text" id="street" value="1234 MAIN ST" /></div>
+        <div class="row3">
+          <div><label>City (DAI)</label><input type="text" id="city" value="ANYTOWN" /></div>
+          <div><label>State (DAJ)</label><input type="text" id="addrState" value="TX" maxlength="2" /></div>
+          <div><label>ZIP (DAK)</label><input type="text" id="zip" value="750010000" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- License -->
+    <div class="panel">
+      <div class="panel-header">License</div>
+      <div class="panel-body">
+        <div class="row2">
+          <div><label>DL Number (DAQ)</label><input type="text" id="dlNumber" value="12345678" /></div>
+          <div><label>Class (DCA)</label><input type="text" id="dlClass" value="C" maxlength="2" /></div>
+        </div>
+        <div class="row2">
+          <div><label>Restrictions (DCB)</label><input type="text" id="restrictions" value="NONE" /></div>
+          <div><label>Endorsements (DCD)</label><input type="text" id="endorsements" value="NONE" /></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barcode Settings -->
+    <div class="panel">
+      <div class="panel-header">Barcode Settings</div>
+      <div class="panel-body">
+
+        <div class="section-divider">Error Correction Level (ECL)</div>
+        <div class="ecl-grid" id="eclGrid">
+          <button class="ecl-btn" data-ecl="0" onclick="setECL(0)">0</button>
+          <button class="ecl-btn" data-ecl="1" onclick="setECL(1)">1</button>
+          <button class="ecl-btn active" data-ecl="2" onclick="setECL(2)">2</button>
+          <button class="ecl-btn" data-ecl="3" onclick="setECL(3)">3</button>
+          <button class="ecl-btn" data-ecl="4" onclick="setECL(4)">4</button>
+          <button class="ecl-btn" data-ecl="5" onclick="setECL(5)">5</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Lower ECL = fewer error correction codewords = more data columns visible. ECL 0–1 best matches dense real-world DL barcodes.</p>
+
+        <div class="section-divider" style="margin-top:8px;">Aspect Ratio</div>
+        <div class="slider-row">
+          <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="5.0" oninput="updateAR()" />
+          <span class="slider-val" id="arVal">5.0</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode (more columns). Range 0.5–20.0 in 0.1 steps.</p>
+
+        <div class="section-divider" style="margin-top:8px;">Columns Override</div>
+        <div class="slider-row">
+          <input type="range" id="colCount" min="0" max="30" step="1" value="0" oninput="updateCols()" />
+          <span class="slider-val" id="colVal">Auto</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = let aspect ratio decide. 1–30 forces a specific column count.</p>
+
+        <div class="section-divider" style="margin-top:8px;">Bar Width (px)</div>
+        <div class="slider-row">
+          <input type="range" id="barWidth" min="1" max="6" step="1" value="2" oninput="updateBarWidth()" />
+          <span class="slider-val" id="bwVal">2</span>
+        </div>
+
+        <button class="btn btn-primary" onclick="generate()">⟳ Generate Barcode</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ RIGHT COLUMN: OUTPUT ══ -->
+  <div class="output-panel" style="display:flex;flex-direction:column;gap:16px;">
+
+    <div class="panel">
+      <div class="panel-header">Barcode Preview</div>
+      <div class="barcode-wrap">
+        <canvas id="barcode"></canvas>
+      </div>
+      <div class="meta-row">
+        <span id="metaInfo" style="color:var(--muted);">—</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-download" onclick="downloadPNG()">⬇ PNG</button>
+          <button class="btn btn-download" onclick="downloadSVG()">⬇ SVG</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel raw-panel">
+      <div class="panel-header">Raw AAMVA String</div>
+      <div class="panel-body">
+        <textarea id="rawString" readonly></textarea>
+        <button class="btn btn-download" style="width:100%;margin-top:4px;" onclick="copyRaw()">⎘ Copy Raw String</button>
+      </div>
+    </div>
+
+    <div class="panel raw-panel">
+      <div class="panel-header">Manual Override</div>
+      <div class="panel-body">
+        <label>Paste your own AAMVA string to encode directly:</label>
+        <textarea id="manualString" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:#fde68a;font-family:'Courier New',monospace;font-size:11px;padding:10px;resize:vertical;min-height:80px;outline:none;"></textarea>
+        <button class="btn btn-primary" onclick="generateManual()" style="margin-top:4px;">⟳ Encode Manual String</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── State ──
+  var currentECL = 2;
+  var currentAR  = 5.0;
+  var currentCols = 0;
+  var currentBW  = 2;
+
+  function setECL(n) {
+    currentECL = n;
+    document.querySelectorAll('.ecl-btn').forEach(function(b){
+      b.classList.toggle('active', parseInt(b.dataset.ecl) === n);
+    });
+    generate();
+  }
+
+  function updateAR() {
+    currentAR = parseFloat(document.getElementById('aspectRatio').value);
+    document.getElementById('arVal').textContent = currentAR.toFixed(1);
+    generate();
+  }
+
+  function updateCols() {
+    currentCols = parseInt(document.getElementById('colCount').value);
+    document.getElementById('colVal').textContent = currentCols === 0 ? 'Auto' : currentCols;
+    generate();
+  }
+
+  function updateBarWidth() {
+    currentBW = parseInt(document.getElementById('barWidth').value);
+    document.getElementById('bwVal').textContent = currentBW;
+    generate();
+  }
+
+  // ── AAMVA string builder ──
+  function buildAAMVA() {
+    var RS = String.fromCharCode(30);
+    var GS = String.fromCharCode(29);
+    var CR = String.fromCharCode(13);
+    var LF = String.fromCharCode(10);
+
+    var country  = v('country')  || 'USA';
+    var state    = v('state')    || 'TX';
+    var iin      = v('iin')      || '636015';
+    var aamvaVer = v('aamvaVersion') || '08';
+    var jurVer   = v('jurisdictionVersion') || '01';
+
+    var lastName  = v('lastName')  || 'SAMPLE';
+    var firstName = v('firstName') || 'DRIVER';
+    var midName   = v('middleName')|| '';
+
+    var dob    = v('dob')    || '19900101';
+    var expiry = v('expiry') || '20301231';
+    var issued = v('issued') || '20200101';
+
+    var sex       = v('sex')       || '1';
+    var eyeColor  = v('eyeColor')  || 'BRO';
+    var hairColor = v('hairColor') || 'BRO';
+    var height    = v('height')    || '069 in';
+    var weight    = v('weight')    || '170';
+
+    var street    = v('street')    || '1234 MAIN ST';
+    var city      = v('city')      || 'ANYTOWN';
+    var addrState = v('addrState') || state;
+    var zip       = v('zip')       || '750010000';
+
+    var dlNum     = v('dlNumber')     || '12345678';
+    var dlClass   = v('dlClass')      || 'C';
+    var restrict  = v('restrictions') || 'NONE';
+    var endorse   = v('endorsements') || 'NONE';
+
+    // Subfile type DL, one subfile
+    var numEntries = '01';
+    var subfileDesignator = 'DL';
+
+    // Build the subfile data
+    var fields = [
+      'DCS' + lastName,
+      'DAC' + firstName,
+      'DAD' + midName,
+      'DBB' + dob,
+      'DBA' + expiry,
+      'DBD' + issued,
+      'DBC' + sex,
+      'DAY' + eyeColor,
+      'DAZ' + hairColor,
+      'DAU' + height,
+      'DAW' + weight,
+      'DAG' + street,
+      'DAI' + city,
+      'DAJ' + addrState,
+      'DAK' + zip,
+      'DAQ' + dlNum,
+      'DCA' + dlClass,
+      'DCB' + restrict,
+      'DCD' + endorse,
+      'DCF' + iin + dlNum,
+      'DCG' + country,
+      'DDE' + 'N',
+      'DDF' + 'N',
+      'DDG' + 'N'
+    ];
+
+    var subfileData = fields.join(LF) + LF;
+
+    // Header: @\n\x1e\rANSI <iin><aamvaVer><jurVer><numEntries><designator><offset><length>
+    // Offset = header length (fixed 20 chars for ANSI header + 10 per entry = header is 10 + 2 + numEntries*10)
+    // Simplified standard header:
+    var headerFixed = '@\n' + RS + CR + 'ANSI ' + iin + aamvaVer + jurVer;
+    // numEntries + subfile designator + offset (10 chars, 0-padded) + length (10 chars, 0-padded)
+    var headerLen = headerFixed.length + 2 + 2 + 4 + 4; // numEntries(2) + subfileType(2) + offset(4) + length(4)
+    var dataLen = subfileData.length;
+    var offsetStr  = pad4(headerLen + 1);  // +1 for the leading @
+    var lengthStr  = pad4(dataLen);
+
+    var aamva = headerFixed + numEntries + subfileDesignator + offsetStr + lengthStr + subfileData;
+    return aamva;
+  }
+
+  function pad4(n) { return String(n).padStart(4, '0'); }
+  function v(id) { return document.getElementById(id).value.trim(); }
+
+  // ── Generate ──
+  function generate() {
+    var str = buildAAMVA();
+    document.getElementById('rawString').value = str
+      .replace(/\r/g,'\\r').replace(/\n/g,'\\n')
+      .replace(new RegExp(String.fromCharCode(30),'g'),'<RS>')
+      .replace(new RegExp(String.fromCharCode(29),'g'),'<GS>');
+    drawBarcode(str);
+  }
+
+  function generateManual() {
+    var str = document.getElementById('manualString').value;
+    if (!str) { alert('Paste an AAMVA string first.'); return; }
+    drawBarcode(str);
+  }
+
+  function drawBarcode(str) {
+    var canvas = document.getElementById('barcode');
+    var opts = { ecl: currentECL, ratio: currentAR, bw: currentBW };
+    if (currentCols > 0) opts.cols = currentCols;
+    try {
+      PDF417.draw(str, canvas, opts.ratio, opts.ecl, opts.cols || undefined, opts.bw);
+      var meta = canvas.width + ' × ' + canvas.height + ' px';
+      document.getElementById('metaInfo').textContent = meta;
+    } catch(e) {
+      document.getElementById('metaInfo').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  // ── Download helpers ──
+  function downloadPNG() {
+    var canvas = document.getElementById('barcode');
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'aamva-pdf417.png';
+    a.click();
+  }
+
+  function downloadSVG() {
+    var canvas = document.getElementById('barcode');
+    var w = canvas.width, h = canvas.height;
+    var ctx = canvas.getContext('2d');
+    var imgData = ctx.getImageData(0, 0, w, h);
+    var rects = [];
+    for (var y = 0; y < h; y++) {
+      var xStart = -1;
+      for (var x = 0; x <= w; x++) {
+        var idx = (y * w + x) * 4;
+        var dark = x < w && imgData.data[idx] < 128;
+        if (dark && xStart === -1) xStart = x;
+        else if (!dark && xStart !== -1) {
+          rects.push('<rect x="'+xStart+'" y="'+y+'" width="'+(x-xStart)+'" height="1"/>');
+          xStart = -1;
+        }
+      }
+    }
+    var svg = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'"><g fill="#000">'+rects.join('')+'</g></svg>';
+    var blob = new Blob([svg], {type:'image/svg+xml'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'aamva-pdf417.svg';
+    a.click();
+  }
+
+  function copyRaw() {
+    var ta = document.getElementById('rawString');
+    navigator.clipboard.writeText(ta.value).then(function(){
+      alert('Copied to clipboard!');
+    });
+  }
+
+  // ── Init ──
+  window.onload = function() { generate(); };
+</script>
+</body>
+</html>
