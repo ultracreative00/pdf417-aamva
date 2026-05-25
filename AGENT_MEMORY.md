@@ -181,17 +181,66 @@ This guard is safe in both environments:
 
 ---
 
-## Pending / Next Steps (Updated After Session 12)
+### Session 13 — Stale-Clone Diagnosis (No Code Change Required)
+**Date:** 2026-05-25
+**Trigger:** User reports the same crash as Session 12:
+```
+TypeError: Cannot set properties of undefined (setting 'width')
+    at Object.draw (/home/ubuntu/pdf417-aamva/lib/pdf417.js:147:22)
+```
 
-- [ ] Run `node gen_aamva_matched.js` end-to-end to confirm all three PNGs generate successfully
+**Diagnosis:** Full read of the live `lib/pdf417.js` on GitHub confirmed the `canvas.style` guard **IS already in place** in the repository at the correct location in the `draw()` function body:
+```js
+if (canvas.style) {
+    canvas.style.width = patwidth + 'px';
+    canvas.style.height = patheight + 'px';
+}
+```
+
+The crash is caused by the **local clone on the server (`/home/ubuntu/pdf417-aamva/`) being stale** — it predates the Session 12 commit and does not have the guard applied locally.
+
+**Root cause:** `git pull` was never run after Session 12's commit landed.
+
+**Resolution:** No code change to the repository is needed. The fix is correct and complete in the repo. The user must sync their local copy:
+
+```bash
+cd /home/ubuntu/pdf417-aamva
+git pull origin main
+cd examples/node
+node gen_aamva_matched.js
+```
+
+**Verification:** After `git pull`, line ~147 of the local `lib/pdf417.js` should read:
+```js
+if (canvas.style) {
+```
+If it reads `canvas.style.width = patwidth + 'px';` without the guard, the pull did not succeed.
+
+**Full script + library code review (Session 13):**
+| File | Status | Notes |
+|---|---|---|
+| `lib/pdf417.js` | ✅ Correct | `canvas.style` guard present; all 3 patches applied |
+| `examples/node/gen_aamva_matched.js` | ✅ Correct | Destructures `{ PDF417 }`, correct draw() API, correct output path |
+| `examples/node/package.json` | ✅ Present | `canvas` npm dependency declared |
+| `CONCLUSION.md` | ✅ Correct | "9 selectable levels (0–8)" — fixed in Session 10 |
+| `SETTINGS_REFERENCE.md` | ✅ Correct | Canonical parameters documented |
+| `README.md` | ✅ Correct | Forensic note present, links to CONCLUSION.md |
+
+**No files changed in Session 13** — this entry is an append-only audit record.
+
+---
+
+## Pending / Next Steps (Updated After Session 13)
+
+- [ ] Run `node gen_aamva_matched.js` end-to-end after `git pull` to confirm all three PNGs generate successfully
 - [ ] Add browser-side decoded payload display to `generate.html`
 - [ ] Add a `verify.js` Node script that decodes two PNG files and compares AAMVA strings
 - [ ] Add CI test for ECL 3/4/5 barcode generation
-- [ ] Update SETTINGS_REFERENCE.md to note `canvas.style` guard and confirmed draw() API
 - [x] ~~Fix gen_aamva_matched.js TypeError: PDF417.draw is not a function~~ — DONE Session 11
 - [x] ~~Correct draw() API signature~~ — DONE Session 11
 - [x] ~~Apply canvas.style guard to draw() body~~ — DONE Session 12
 - [x] ~~Verify generate.html defaults~~ — DONE Session 10
+- [x] ~~Diagnose Session 12 crash re-occurrence~~ — DONE Session 13 (stale local clone)
 
 ---
 
@@ -205,3 +254,4 @@ This guard is safe in both environments:
 - `draw()` resizes the canvas itself — never pre-set width/height before calling `draw()`.
 - Visual similarity between two PDF417 barcodes encoding the same data is NOT expected by design.
 - **Document + code must change together.** A comment-only patch provides false confidence.
+- **Always verify the local clone is up to date before diagnosing a crash as a new bug.** A crash identical to a previously fixed bug is almost always a stale clone, not a regression.
