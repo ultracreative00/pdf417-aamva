@@ -143,13 +143,45 @@ Fixed 7 issues including generate.html defaults, AAMVA payload, X-dim formula. *
 
 ---
 
-## Pending / Next Steps (Updated After Session 12)
+### Session 13 — Stale Clone Diagnosis
+**Date:** 2026-05-25  
+**Trigger:** User reported `TypeError: Cannot set properties of undefined (setting 'width')` at `lib/pdf417.js:147` — the exact error PATCH 3 was designed to fix.
 
-- [ ] Run `node gen_aamva_matched.js` and confirm 3 PNG files generated without error
+**Diagnosis:** The GitHub repo (`lib/pdf417.js` on `main`) was confirmed to already contain PATCH 3 (the `if (canvas.style)` guard) and PATCH 3's `window` guard — both committed in Session 12. The crash can only occur if the **local clone on the server has not been updated** via `git pull`.
+
+**Evidence:**
+- `lib/pdf417.js` on GitHub (SHA: `d6ec94da...`) contains the Session 12 `if (canvas.style)` guard at lines ~147-150.
+- `AGENT_MEMORY.md` (SHA: `8590af46...`) documents Session 12 as completed with both patches applied.
+- `gen_aamva_matched.js` (SHA: `cc664d8b...`) is correct — uses destructured `{ PDF417 }` require and correct draw() API.
+- **No code changes were needed on GitHub.** The repo is correct.
+
+**Action Required (user must run on their server):**
+```bash
+cd /home/ubuntu/pdf417-aamva
+git pull origin main
+cd examples/node
+node gen_aamva_matched.js
+```
+
+**Why this works:** `git pull` brings `lib/pdf417.js` into sync with the GitHub `main` branch, which already contains PATCH 3. The local file at `/home/ubuntu/pdf417-aamva/lib/pdf417.js` is the unpatched version from before Session 12.
+
+**Root cause classification:** Stale working tree — not a new bug. All code fixes were already present in the remote repo.
+
+**Files changed this session:**
+| File | Change |
+|---|---|
+| `AGENT_MEMORY.md` | Appended Session 13 with stale-clone diagnosis |
+
+---
+
+## Pending / Next Steps (Updated After Session 13)
+
+- [ ] Run `node gen_aamva_matched.js` and confirm 3 PNG files generated without error ← **blocked by stale clone; run `git pull` first**
 - [ ] Add `verify.js` Node script to decode two PNGs and compare AAMVA strings
 - [ ] Add CI test for ECL 3/4/5 generation
 - [ ] Update SETTINGS_REFERENCE.md: cols not a draw() param; dpr replaces barWidth
 - [x] ~~TypeError: PDF417.draw is not a function~~ — Session 11
 - [x] ~~draw() API signature documentation~~ — Session 11
-- [x] ~~canvas.style crash in Node.js~~ — **Session 12**
-- [x] ~~window.devicePixelRatio crash in Node.js~~ — **Session 12**
+- [x] ~~canvas.style crash in Node.js~~ — Session 12
+- [x] ~~window.devicePixelRatio crash in Node.js~~ — Session 12
+- [x] ~~Stale clone re-surfacing canvas.style crash~~ — Session 13
