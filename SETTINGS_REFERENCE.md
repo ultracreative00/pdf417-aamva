@@ -1,118 +1,103 @@
-# Settings Reference — PDF417 AAMVA Generator
+# Settings Reference — PDF417 AAMVA
 
-> **Purpose:** This file defines the authoritative baseline parameters used by this repository for generating, testing, and forensically reviewing PDF417 AAMVA barcodes. All output described in [`CONCLUSION.md`](CONCLUSION.md) was produced and validated against these settings.
+> **Purpose:** Defines the canonical baseline parameters for generating and reviewing
+> PDF417 AAMVA barcodes in this repository. Updated after each session.
+> See [AGENT_MEMORY.md](AGENT_MEMORY.md) for full derivation history.
 >
-> **Persistent memory:** See [`AGENT_MEMORY.md`](AGENT_MEMORY.md) for the full session history, mistake log, and deep technical derivations behind every value here.
+> **Last updated:** 2026-05-25 (Session 6)
 
 ---
 
-## Baseline Parameters
+## Canonical Baseline Parameters
+
+These are the authoritative settings for reproducing a 15-column AAMVA barcode
+matching the column geometry of `bar-org.jpg`.
 
 | Parameter | Value | Notes |
 |---|---|---|
-| **Columns** | `15` | Hardcoded per AAMVA standard — do not change |
-| **Error Correction Level** | `4` | Repository default; AAMVA recommended range: 3–5 |
-| **Aspect Ratio (geometry-exact)** | `5.464` | Forces 15 cols × 14 rows for the reference payload. See note below. |
-| **Aspect Ratio (UI default)** | `2.0` | Default shown in generate.html UI — acceptable for general use |
-| **Row Count** | Auto (14 for reference payload) | Derived from payload length + ECL — never hardcode |
-| **Compaction Mode** | Auto | `lib/pdf417.js` selects Text / Numeric / Byte per field |
-| **Device Pixel Ratio** | `0` (→ window default) | Pass `0` in Node.js; do not force to `1` |
-| **Post-generation Scale** | `5.434×` | Required to match bar-org.jpg geometry (1px/module → 5.434px/module) |
-| **Scale Interpolation** | Nearest-neighbour | `imageSmoothingEnabled = false` — MUST be set |
-| **Validation Method** | Decode payload first | Visual similarity is **not** a valid authenticity test |
-
-> **Important — aspectRatio explained:**  
-> `aspectRatio` in `PDF417.draw()` is a **layout hint in module-space**, not a pixel ratio.  
-> It feeds the column-count formula: `cols = round((sqrt(4761 + 68 × AR × ROWHEIGHT × nce) − 69) / 34)`  
-> The geometry-exact value `5.464` = `306 modules / (14 rows × 4 px/row)` = `W_modules / (rows × ROWHEIGHT)`.  
-> Using `2.0` produces a different column/row layout for this payload.
+| **Columns** | 15 | AAMVA standard; derived by ASPECT formula, not passed directly |
+| **ECL** | 4 | 32 Reed-Solomon EC codewords; AAMVA operational default |
+| **ASPECT (draw() arg)** | **4.889** | Safe midpoint for cols=15 at nce≈248 (byte compaction). Valid range: (4.746, 5.033). **Changed from 5.464 in Session 6** — see §ASPECT History |
+| **X dimension** | 5.434 px/module | Measured from bar-org.jpg: 1663px ÷ 306 modules |
+| **Scale factor** | 5.434× | Applied post-generation via nearest-neighbour scaling |
+| **devicePixelRatio** | 1 | Always `1` in Node.js — 5th arg to draw(); never 0 or COLS |
+| **imageSmoothingEnabled** | false | Nearest-neighbour scaling; preserves hard bar edges |
+| **Compaction mode** | Byte (auto) | Forced by \x1e (RS) in payload; pdf417.js auto-detects |
+| **Row count** | ~17 (derived) | Not set by caller; derived internally from nce and ASPECT |
+| **Expected native width** | 328 px | 2+17+17+255+17+18+2 for 15 cols at DPR=1 |
+| **Expected native height** | ~72 px | ~17 rows × 4 + 4 (byte compaction); accept derived value |
+| **Expected scaled width** | ~1782 px | 328 × 5.434 |
+| **Expected scaled height** | ~391 px | ~72 × 5.434 |
 
 ---
 
-## How to Reproduce bar-org.jpg Geometry Exactly
+## ASPECT Parameter History
 
-The complete working script is at [`examples/node/gen_aamva_matched.js`](examples/node/gen_aamva_matched.js).
+| Session | ASPECT used | nce assumed | Derived cols | Outcome |
+|---|---|---|---|---|
+| Session 2 | 5.464 | ~210 (estimate) | 15 | ✅ Correct result (wrong reason) |
+| Sessions 3–5 | 5.464 | ~210 (carried forward) | — | DPR bugs masked the column error |
+| Session 6 | **4.889** | **248 (actual, byte mode)** | **15** | ✅ Correct — columns verified from canvas |
 
-Key steps:
+**Why 5.464 was wrong:** It is the symbol-space ratio of the bar-org.jpg image
+(`306 / (14×4) = 5.464`), derived from the reference barcode geometry.
+However, pdf417.js uses this value in the column-derivation formula with the
+*actual payload's nce* — not with bar-org.jpg's nce.
+At nce≈248 (byte mode), ASPECT=5.464 produces 16 cols, not 15.
 
-```js
-// Step 1: generate at native 1px/module resolution
-const tempCanvas = createCanvas(1, 1);
-PDF417.draw(AAMVA_STRING, tempCanvas, 5.464, 4, 15, 0);
-// → 310 × 60 px  (15 cols, 14 rows, at 1px/module)
-
-// Step 2: scale to match bar-org.jpg X dimension (5.434 px/module)
-const SCALE = 5.434;
-const outCanvas = createCanvas(
-  Math.round(tempCanvas.width  * SCALE),  // → ~1684 px
-  Math.round(tempCanvas.height * SCALE)   // →  ~326 px
-);
-const ctx = outCanvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;  // CRITICAL — hard bar edges
-ctx.drawImage(tempCanvas, 0, 0, outCanvas.width, outCanvas.height);
-```
+**Why 4.889 is correct:** It is the safe midpoint of the valid range for cols=15
+at nce∈[241,256]: `(4.746 + 5.033) / 2 = 4.889`.
+See [AGENT_MEMORY.md §9](AGENT_MEMORY.md) for full derivation.
 
 ---
 
-## pdf417.js Internal Constants
+## nce Reference Table
 
-```
-ROWHEIGHT = 4    each logical PDF417 row = 4 pixel-rows in the bitmap
-QUIETV    = 2    2 pixel-row quiet zones top + bottom
-QUIETH    = 2    2 module quiet zones left + right
-```
+Estimated `nce` (total codeword count) determines which ASPECT values yield a
+given column count. Use this table when the payload or compaction mode changes.
 
-Canvas size formula:
-```
-num_cols = (cols + 2) × 17 + 35 + 2×QUIETH  →  for 15 cols: 310 modules
-num_rows = rows × ROWHEIGHT + 2×QUIETV       →  for 14 rows:  60 px
-```
+| Compaction | Payload | nce estimate | Cols=15 ASPECT range |
+|---|---|---|---|
+| Byte mode (pdf417.js default) | 337-byte AAMVA | ~248 | (4.746, 5.033) |
+| Text+913 escape (NC DMV printer) | 337-char AAMVA | ~203 | (5.251, 5.730) |
+| Generic reference (Session 2) | — | ~210 | (5.097, 5.555) |
 
 ---
 
-## bar-org.jpg Reference Geometry
+## Row Count vs Column Count
 
-| Property | Value |
-|---|---|
-| Full image | 1725 × 351 px |
-| Content (barcode only) | 1663 × 314 px |
-| Columns / Rows | 15 / 14 |
-| Total modules wide | 306 |
-| **X dimension** | **5.434 px/module** (1663 ÷ 306) |
-| Row height | 22.43 px (= 4.13 × X) |
-| Symbol aspect ratio | 5.296 (1663 ÷ 314) |
-| ECL | 4 |
-| Black pixel ratio | ~50% ✅ |
-| X classification | Near-integer ✅ Authentic |
+Column count (15) is the critical AAMVA geometry parameter — it must always be verified.
+Row count is a secondary consequence of nce and is **different** between pdf417.js
+output and bar-org.jpg because they use different compaction modes.
 
----
+| Source | Compaction | nce | Cols | Rows |
+|---|---|---|---|---|
+| bar-org.jpg (NC DMV printer) | Text + 913-escape | ~203 | 15 | 14 |
+| pdf417.js (this repo) | Byte (auto) | ~248 | 15 | ~17 |
 
-## Forensic X Dimension Thresholds
-
-| Barcode | X Dimension | Classification |
-|---|---|---|
-| `bar-org.jpg` | **5.434 px/module** | ✅ Authentic — near-integer, generator-native |
-| `IMG_0017-3.jpg` | **5.77 px/module** | ⚠️ Suspect — fractional, resize/recapture artifact |
-
-**Threshold:** X within ±0.1 px of a clean value → authentic. Deviation > ±0.3 px → suspect.
+This is the expected and correct outcome: **same payload, same columns, different rows**.
+Row difference is a compaction-mode difference — NOT a payload or authenticity difference.
+See [CONCLUSION.md](CONCLUSION.md) for the definitive statement on why same payload
+produces different geometry.
 
 ---
 
 ## Review Rules
 
-1. **Decode first.** Compare decoded AAMVA string character-by-character.
-2. **Validate Reed-Solomon.** Uncorrectable EC errors = fail, regardless of visual appearance.
-3. **Check structural metrics** (not visual similarity): min bar width ≥ X, black pixel ratio ≈ 50%, X near-integer, data runs per row consistent with col count.
-4. **Visual geometry comparison is not a valid authenticity test.**
-5. **Treat rescans / screenshots as rendering artifacts**, not payload changes.
+1. **Decode first.** Visual similarity is NOT a valid authenticity test.
+2. **Column count (15) is the primary geometry invariant.** Verify from canvas width: `(canvas.width - 73) / 17`.
+3. **Row count may differ** between this repo's output and bar-org.jpg (see table above). This is expected.
+4. **ASPECT must match the actual nce.** If payload or compaction mode changes, recalculate valid ASPECT range.
+5. **Same payload ≠ same visual shape.** EC level, compaction mode, column/row config, and X dimension all affect geometry independently.
+6. **DPR must be 1** in Node.js (5th arg to draw()). Never 0, never COLS.
+7. **Never hardcode row count** — always derive: `rows = (canvas.height - 4) / 4`.
 
 ---
 
-## Key Conclusion
+## Critical Conclusion
 
-> **Same Payload ≠ Same Visual Shape in PDF417.**  
-> Fix all five variables (cols, ECL, compaction, cluster, X dimension) and you force identical geometry.
-> Change any one and the geometry diverges completely.
-
-Full forensic analysis → [CONCLUSION.md](CONCLUSION.md)  
-Session history & mistake log → [AGENT_MEMORY.md](AGENT_MEMORY.md)
+> **Same Payload ≠ Same Visual Shape in PDF417.**
+>
+> A change in row count, EC level, compaction mode, cluster assignment, or X-dimension
+> can produce a barcode that looks completely different while decoding to the same data.
+> See [CONCLUSION.md](CONCLUSION.md) for the full authoritative analysis.
