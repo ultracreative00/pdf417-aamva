@@ -144,7 +144,7 @@
     <div class="panel">
       <div class="panel-header">Name</div>
       <div class="panel-body">
-        <div><label>Last Name (DAB/DCS)</label><input type="text" id="lastName" value="SAMPLE" /></div>
+        <div><label>Last Name (DCS)</label><input type="text" id="lastName" value="SAMPLE" /></div>
         <div class="row2">
           <div><label>First Name (DAC)</label><input type="text" id="firstName" value="DRIVER" /></div>
           <div><label>Middle Name (DAD)</label><input type="text" id="middleName" value="LICENSE" /></div>
@@ -157,9 +157,9 @@
       <div class="panel-header">Dates</div>
       <div class="panel-body">
         <div class="row3">
-          <div><label>DOB (DBB)</label><input type="text" id="dob" value="19900101" placeholder="MMDDYYYY" /></div>
-          <div><label>Expiry (DBA)</label><input type="text" id="expiry" value="20300101" placeholder="MMDDYYYY" /></div>
-          <div><label>Issue (DBD)</label><input type="text" id="issued" value="20200101" placeholder="MMDDYYYY" /></div>
+          <div><label>DOB (DBB)</label><input type="text" id="dob" value="19900101" placeholder="YYYYMMDD" /></div>
+          <div><label>Expiry (DBA)</label><input type="text" id="expiry" value="20300101" placeholder="YYYYMMDD" /></div>
+          <div><label>Issue (DBD)</label><input type="text" id="issued" value="20200101" placeholder="YYYYMMDD" /></div>
         </div>
       </div>
     </div>
@@ -176,7 +176,7 @@
           <div><label>Hair Color (DAZ)</label><input type="text" id="hairColor" value="BRO" maxlength="3" /></div>
         </div>
         <div class="row2">
-          <div><label>Height (DAU) in/cm</label><input type="text" id="height" value="069 in" /></div>
+          <div><label>Height (DAU) in</label><input type="text" id="height" value="069 in" /></div>
           <div><label>Weight (DAW) lbs</label><input type="text" id="weight" value="170" /></div>
         </div>
       </div>
@@ -216,6 +216,7 @@
       <div class="panel-body">
 
         <!-- ECL: Dropdown + Slider + Number Input -->
+        <!-- DEFAULT: ECL=4 (repo canonical default per AGENT_MEMORY.md) -->
         <div class="section-divider">Error Correction Level (ECL)</div>
 
         <label for="eclSelect">Quick Pick:</label>
@@ -224,7 +225,8 @@
           <option value="1">1</option>
           <option value="2">2 — Low</option>
           <option value="3">3</option>
-          <option value="5" selected>5 — Standard</option>
+          <option value="4" selected>4 — Standard (repo default)</option>
+          <option value="5">5</option>
           <option value="10">10 — Medium</option>
           <option value="20">20 — High</option>
           <option value="50">50 — Very High</option>
@@ -233,20 +235,22 @@
 
         <label style="margin-top:4px;">Fine-tune (0 – 100):</label>
         <div class="ecl-slider-row">
-          <input type="range" id="eclSlider" min="0" max="100" step="1" value="5" oninput="onSliderChange(this.value)" />
-          <input type="number" id="eclNum" class="ecl-num" min="0" max="100" value="5" onchange="onNumChange(this.value)" onkeyup="onNumChange(this.value)" />
+          <input type="range" id="eclSlider" min="0" max="100" step="1" value="4" oninput="onSliderChange(this.value)" />
+          <input type="number" id="eclNum" class="ecl-num" min="0" max="100" value="4" onchange="onNumChange(this.value)" onkeyup="onNumChange(this.value)" />
         </div>
         <p style="font-size:11px;color:var(--muted);margin-top:2px;">
-          Dropdown snaps to a preset. Slider or number input lets you pick <em>any</em> integer 0–100.
+          ECL 4 = repo default (32 EC codewords). Range 0–100.
+          <br>ECL 3–5 recommended for AAMVA. See SETTINGS_REFERENCE.md.
         </p>
 
         <!-- Aspect Ratio -->
+        <!-- DEFAULT: 2.0 (repo canonical default per AGENT_MEMORY.md) -->
         <div class="section-divider" style="margin-top:8px;">Aspect Ratio</div>
         <div class="slider-row">
-          <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="5.0" oninput="updateAR()" />
-          <span class="slider-val" id="arVal">5.0</span>
+          <input type="range" id="aspectRatio" min="0.5" max="20.0" step="0.1" value="2.0" oninput="updateAR()" />
+          <span class="slider-val" id="arVal">2.0</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">Higher ratio = wider/shorter barcode. Range 0.5–20.0.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">2.0 = repo default (matches bar-org.jpg authentic baseline). Range 0.5–20.0.</p>
 
         <!-- Columns Override -->
         <div class="section-divider" style="margin-top:8px;">Columns Override</div>
@@ -254,7 +258,7 @@
           <input type="range" id="colCount" min="0" max="30" step="1" value="0" oninput="updateCols()" />
           <span class="slider-val" id="colVal">Auto</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = auto. 1–30 forces column count.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">0 = auto (AAMVA default: 15). 1–30 forces column count.</p>
 
         <!-- Bar Width -->
         <div class="section-divider" style="margin-top:8px;">Bar Width (px)</div>
@@ -262,6 +266,7 @@
           <input type="range" id="barWidth" min="1" max="6" step="1" value="2" oninput="updateBarWidth()" />
           <span class="slider-val" id="bwVal">2</span>
         </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px;">2 px = repo default. Produces X ≈ 5.42 px/module at 15 cols (matches bar-org.jpg).</p>
 
         <button class="btn btn-primary" onclick="generate()">⟳ Generate Barcode</button>
       </div>
@@ -307,18 +312,17 @@
 </div>
 
 <script>
-  // ── State ──
-  var currentECL  = 5;
-  var currentAR   = 5.0;
-  var currentCols = 0;
-  var currentBW   = 2;
+  // ── State ── (canonical defaults per AGENT_MEMORY.md)
+  var currentECL  = 4;    // ECL 4 = repo default (32 EC codewords)
+  var currentAR   = 2.0;  // Aspect ratio 2.0 = repo canonical default
+  var currentCols = 0;    // 0 = auto (library uses 15 for AAMVA)
+  var currentBW   = 2;    // 2 px/module = produces X ≈ 5.42 at 15 cols
 
   // Preset values for the dropdown
-  var ECL_PRESETS = [0, 1, 2, 3, 5, 10, 20, 50, 100];
+  var ECL_PRESETS = [0, 1, 2, 3, 4, 5, 10, 20, 50, 100];
 
   // ── ECL: three-way sync (dropdown ↔ slider ↔ number) ──
 
-  // Called when dropdown changes → snap to preset value, sync slider + num
   function onDropdownChange(val) {
     var n = parseInt(val, 10);
     currentECL = n;
@@ -327,7 +331,6 @@
     generate();
   }
 
-  // Called when slider moves → update num + try to match nearest preset in dropdown
   function onSliderChange(val) {
     var n = parseInt(val, 10);
     currentECL = n;
@@ -336,7 +339,6 @@
     generate();
   }
 
-  // Called when number input changes → clamp, update slider + dropdown
   function onNumChange(val) {
     var n = parseInt(val, 10);
     if (isNaN(n)) return;
@@ -348,7 +350,6 @@
     generate();
   }
 
-  // Sync dropdown: if current value matches a preset, select it; else clear selection
   function syncDropdown(n) {
     var sel = document.getElementById('eclSelect');
     var matched = false;
@@ -359,7 +360,7 @@
         break;
       }
     }
-    if (!matched) sel.selectedIndex = -1; // no preset matches — show blank
+    if (!matched) sel.selectedIndex = -1;
   }
 
   // ── Other controls ──
@@ -425,7 +426,7 @@
     ];
 
     var subfileData = fields.join(LF) + LF;
-    var headerFixed = '@\n' + RS + CR + 'ANSI ' + iin + aamvaVer + jurVer;
+    var headerFixed = '@' + LF + RS + CR + 'ANSI ' + iin + aamvaVer + jurVer;
     var headerLen = headerFixed.length + 2 + 2 + 4 + 4;
     var offsetStr = pad4(headerLen + 1);
     var lengthStr = pad4(subfileData.length);
@@ -455,9 +456,16 @@
     var canvas = document.getElementById('barcode');
     var cols = currentCols > 0 ? currentCols : undefined;
     try {
+      // API: PDF417.draw(code, canvas, aspectRatio, ecLevel, columns, barWidth)
       PDF417.draw(str, canvas, currentAR, currentECL, cols, currentBW);
+      // Correct module count: start(17) + left_ind(17) + data(cols×17) + right_ind(17) + stop(18) = cols×17+69
+      // At cols=15: 324 modules — used to compute X dimension for display
+      var cols15 = (cols || 15);
+      var totalModules = cols15 * 17 + 69;
+      var xDim = (canvas.width / totalModules).toFixed(2);
       document.getElementById('metaInfo').textContent =
-        canvas.width + ' × ' + canvas.height + ' px  |  ECL ' + currentECL + '  |  AR ' + currentAR.toFixed(1);
+        canvas.width + ' × ' + canvas.height + ' px  |  ECL ' + currentECL +
+        '  |  AR ' + currentAR.toFixed(1) + '  |  X ≈ ' + xDim + ' px/mod';
     } catch(e) {
       document.getElementById('metaInfo').textContent = 'Error: ' + e.message;
     }
