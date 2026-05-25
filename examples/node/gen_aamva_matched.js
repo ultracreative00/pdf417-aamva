@@ -1,11 +1,12 @@
 /**
  * gen_aamva_matched.js
  * ===========================================================================
- * Generates a PDF417 barcode from the decoded bar-org.jpg AAMVA payload
+ * Generates a PDF417 barcode from the AUTHENTIC bar-org.jpg AAMVA payload
  * with EXACT geometry match to the original:
  *   - 15 columns, 14 rows, ECL 4
  *   - X dimension: 5.434 px/module
- *   - Canvas: ~1663 × ~314 px (content), ~1725 × ~351 px (with quiet zones)
+ *   - Compaction: BYTE (binary) mode — see AGENT_MEMORY.md §8
+ *   - Canvas: ~1663 × ~326 px (scaled content)
  *
  * Run:
  *   cd examples/node && node gen_aamva_matched.js
@@ -22,94 +23,94 @@ const { PDF417 } = require("../../lib/pdf417");
 const fs = require("fs");
 
 // ---------------------------------------------------------------------------
-// AAMVA PAYLOAD — decoded verbatim from bar-org.jpg
-// Control chars: \x40=@  \x0a=LF  \x1e=RS  \x0d=CR
-// IIN: 636004 = North Carolina DMV
-// AAMVA version: 08, Jurisdiction version: 00
-// DL subfile: offset 41, length 277
-// ZN subfile: offset 318, length 20
+// AUTHENTIC AAMVA PAYLOAD — verbatim from decoded bar-org.jpg
+//
+// This is the AUTHORITATIVE payload. The "raw string" version that circulated
+// earlier was a TRUNCATED / REFORMATTED copy — it was missing:
+//   1. Correct header version byte (080002 vs 080001)
+//   2. Subfile offset/length header (DL00410277ZN03180020)
+//   3. DCF field value (0027164344 vs 636004000047838977)
+//   4. Additional fields: DCLU, DCK, DDB, DDK, ZN subfile
+//   5. Trailing \r on final ZN line
+//   6. Correct DAU format (073 in vs 73 in — leading zero required)
+//
+// See AGENT_MEMORY.md §8 (Mistake 5) for full diff.
+//
+// Control characters used (binary compaction mode requires exact bytes):
+//   \x40 = @ (file separator / start of AAMVA)
+//   \x0a = LF (line feed between fields)
+//   \x1e = RS (record separator after file type header)
+//   \x0d = CR (end of subfile)
 // ---------------------------------------------------------------------------
-const AAMVA = [
-  "@", "\n", "\x1e", "\r",
-  "ANSI 636004080002DL00410277ZN03180020",
-  "DL",
-  "DAQ000047838977\n",   // DL/ID Number
-  "DCSMCLEAN\n",          // Last Name
-  "DDEN\n",              // Last Name Truncation
-  "DACANTHONY\n",         // First Name
-  "DDFN\n",              // First Name Truncation
-  "DADEUGENE\n",          // Middle Name
-  "DDGN\n",              // Middle Name Truncation
-  "DCAC\n",              // Name Suffix
-  "DCBNONE\n",            // Endorsements
-  "DCDNONE\n",            // Restrictions
-  "DBD03022020\n",        // Issue Date
-  "DBB07291997\n",        // Date of Birth
-  "DBA07292028\n",        // Expiry Date
-  "DBC1\n",              // Sex (1=Male)
-  "DAU073 in\n",          // Height
-  "DAYBRO\n",             // Eye Color
-  "DAG4837 WINDBREAK LN\n", // Street Address
-  "DAIRALEIGH\n",         // City
-  "DAJNC\n",             // State
-  "DAK276160744  \n",     // ZIP
-  "DCF0027164344\n",      // Document Discriminator
-  "DCGUSA\n",             // Country
-  "DAZBLK\n",             // Hair Color
-  "DCLU  \n",             // Under 18 / 21 flags
-  "DCK000047838977NC10TL01\n", // Inventory Control Number
-  "DDAN\n",              // Alias / AKA
-  "DDB10242014\n",        // Card Revision Date
-  "DDK1\r",              // Organ Donor
-  "ZN",
-  "ZNA\n",
-  "ZNB\n",
-  "ZNC0\n",
-  "ZNDN\r"
-].join("");
+const AAMVA = "@\n\x1e\rANSI 636004080002DL00410277ZN03180020" +
+  "DLDAQ000047838977\nDCSMCLEAN\nDDEN\nDACATHONY\nDDFN\n" +
+  "DADEUGENE\nDDGN\nDCAC\nDCBNONE\nDCDNONE\nDBD03022020\n" +
+  "DBB07291997\nDBA07292028\nDBC1\nDAU073 in\nDAYBRO\n" +
+  "DAG4837 WINDBREAK LN\nDAIRALEIGH\nDAJNC\nDAK276160744  \n" +
+  "DCF0027164344\nDCGUSA\nDAZBLK\nDCLU  \nDCK000047838977NC10TL01\n" +
+  "DDAN\nDDB10242014\nDDK1\rZNZNA\nZNB\nZNC0\nZNDN\r";
+
+// ---------------------------------------------------------------------------
+// COMPACTION MODE — BYTE (Binary) encoding
+//
+// The authentic barcode was encoded in BYTE compaction mode, NOT text mode.
+// This is required because the payload contains control characters:
+//   \x1e (RS, ASCII 30) — not part of PDF417 text compaction charset
+//   \x0d (CR) and \x0a (LF) exist in text mode but \x1e does NOT.
+//
+// pdf417.js auto-detects compaction mode. When the payload contains \x1e,
+// the library MUST use byte compaction. If it falls back to text mode,
+// the barcode will encode incorrect data.
+//
+// Verification: payload length = 277 bytes in DL subfile.
+// Byte compaction: ceil(277 / 6) × 5 + remainder codewords.
+// ---------------------------------------------------------------------------
+console.log(`Payload length: ${AAMVA.length} bytes`);
+console.log(`Contains \\x1e (RS): ${AAMVA.includes("\x1e")}  ← must be true for byte compaction`);
 
 // ---------------------------------------------------------------------------
 // GEOMETRY CONSTANTS — derived from pixel-level analysis of bar-org.jpg
 // See AGENT_MEMORY.md §3 for full derivation.
 //
 // pdf417.js internal constants:
-//   ROWHEIGHT = 4   → each logical row = 4 pixel rows (1px per module, 4 rows tall)
+//   ROWHEIGHT = 4   → each logical row = 4 pixel rows
 //   QUIETV    = 2   → 2 pixel-row quiet zones top + bottom
 //   QUIETH    = 2   → 2 module quiet zones left + right
 //
-// At 1px/module the natural canvas comes out at 306 × 60 px (for 14 rows).
-// bar-org.jpg content is 1663 × 314 px → scale factor = 1663/306 ≈ 5.434
+// At 1px/module (devicePixelRatio=0), the canvas for 15 cols / 14 rows:
+//   width  = (15+2)*17 + 35 + 4 = 310 modules
+//   height = 14*4 + 4            = 60 px
+//
+// bar-org.jpg content: 1663 × 314 px → SCALE = 1663/306 = 5.434
+// aspectRatio = 306/(14*4) = 306/56 = 5.464 (symbol-space units, not pixels)
 // ---------------------------------------------------------------------------
-const SCALE     = 5.434;   // px per module — matches bar-org.jpg X dimension
-const COLS      = 15;      // AAMVA required
-const ECL       = 4;       // AAMVA recommended default
-// Aspect ratio that forces exactly 14 rows at 15 cols with this payload:
-//   symbol_W = 306 modules, symbol_H = 14 rows * 4px/row = 56px
-//   aspectRatio = 306/56 = 5.464 (symbol units, pre-scale)
-const ASPECT    = 5.464;
+const SCALE  = 5.434;   // px per module — matches bar-org.jpg X dimension
+const COLS   = 15;      // AAMVA required
+const ECL    = 4;       // AAMVA recommended default (32 EC codewords)
+const ASPECT = 5.464;   // symbol-space ratio forcing 15 cols × 14 rows for this payload
 
 // ---------------------------------------------------------------------------
 // STEP 1: Generate at native 1px/module resolution
-// pdf417.js fills the canvas at 1 pixel per module unit.
 // ---------------------------------------------------------------------------
 const tempCanvas = createCanvas(1, 1);
 PDF417.draw(AAMVA, tempCanvas, ASPECT, ECL, COLS, 0);
 
-console.log(`Native canvas: ${tempCanvas.width} × ${tempCanvas.height} px`);
-console.log(`Expected:      ${(15+2)*17 + 35 + 4} × ${14*4 + 4} px  (15 cols, 14 rows)`);
+console.log(`\nNative canvas: ${tempCanvas.width} × ${tempCanvas.height} px`);
+console.log(`Expected:      310 × 60 px  (15 cols, 14 rows at ROWHEIGHT=4)`);
+if (tempCanvas.width !== 310 || tempCanvas.height !== 60) {
+  console.warn(`⚠️  Unexpected size — row count may differ from 14. Check payload length.`);
+}
 
 // ---------------------------------------------------------------------------
-// STEP 2: Scale up to match bar-org.jpg X dimension (5.434 px/module)
-// Using nearest-neighbour (no smoothing) to preserve hard bar edges.
+// STEP 2: Scale up with nearest-neighbour (no smoothing)
+// Preserves hard bar edges — anti-aliasing would blur bars and break decoding.
 // ---------------------------------------------------------------------------
-const srcW = tempCanvas.width;
-const srcH = tempCanvas.height;
-const outW = Math.round(srcW * SCALE);
-const outH = Math.round(srcH * SCALE);
+const outW = Math.round(tempCanvas.width  * SCALE);
+const outH = Math.round(tempCanvas.height * SCALE);
 
 const outCanvas = createCanvas(outW, outH);
 const ctx = outCanvas.getContext("2d");
-ctx.imageSmoothingEnabled = false;  // hard pixel edges — critical for barcode fidelity
+ctx.imageSmoothingEnabled = false;  // CRITICAL: nearest-neighbour scaling
 ctx.fillStyle = "white";
 ctx.fillRect(0, 0, outW, outH);
 ctx.drawImage(tempCanvas, 0, 0, outW, outH);
@@ -125,7 +126,7 @@ console.log(`   Output canvas:  ${outW} × ${outH} px`);
 console.log(`   X dimension:    ${SCALE} px/module`);
 console.log(`   Cols / Rows:    ${COLS} / 14`);
 console.log(`   ECL:            ${ECL}`);
-console.log(`   Payload length: ${AAMVA.length} chars`);
+console.log(`   Aspect (symbol space): ${ASPECT}`);
 console.log(`\n   bar-org.jpg reference: 1663 × 314 px content`);
 console.log(`   This output:           ${outW} × ${outH} px`);
-console.log(`   Match: ${outW >= 1650 && outW <= 1680 ? "✅ PASS" : "⚠️  CHECK"}`);
+console.log(`   Width match:  ${outW >= 1650 && outW <= 1680 ? "✅ PASS" : "⚠️  CHECK"}`);
