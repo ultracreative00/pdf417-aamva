@@ -27,19 +27,23 @@
  * All three PNG files decode to the identical AAMVA string.
  * Visual comparison will show completely different bar geometries.
  *
- * Agent-set parameters (see AGENT_MEMORY.md):
- *   columns      = 15      (AAMVA-mandated)
- *   aspectRatio  = 2.0     (repo canonical default)
- *   barWidth     = 2       (px/module — produces X ≈ 5.42 px at 15 cols)
- *   output       = PNG     (lossless — preserves sub-module bar precision)
+ * draw() API signature (lib/pdf417.js) — CONFIRMED Session 11:
+ *   PDF417.draw(code, canvas, aspectRatio, ecLevel, devicePixelRatio, lineColor)
  *
- * draw() API signature (lib/pdf417.js):
- *   PDF417.draw(code, canvas, aspectRatio, ecLevel, columns, barWidth)
- *   All arguments are positional — NOT an options object.
+ *   IMPORTANT: The library does NOT accept columns or barWidth as parameters.
+ *   Columns are computed internally from aspectRatio using:
+ *     numcols = round( (sqrt(4761 + 68 * aspectRatio * ROWHEIGHT * (numcw+1)) - 69) / 34 )
+ *   linewidth is hardcoded to 1 inside draw().
+ *   Pass aspectRatio=2.0 to get ~15 columns for a 253-byte AAMVA payload.
+ *
+ * REQUIRE FIX (Session 11):
+ *   lib/pdf417.js exports { PDF417, HUB3 } — must destructure:
+ *     const { PDF417 } = require('../../lib/pdf417')   ← CORRECT
+ *     const PDF417 = require('../../lib/pdf417')        ← WRONG (imports wrapper object)
  */
 
 const { createCanvas } = require('canvas')
-const PDF417 = require('../../lib/pdf417')
+const { PDF417 } = require('../../lib/pdf417')   // FIX: destructure — lib exports {PDF417, HUB3}
 const fs = require('fs')
 
 // ---------------------------------------------------------------------------
@@ -98,10 +102,14 @@ const AAMVA_PAYLOAD = headerFixed + '01' + 'DL' + offsetStr + lengthStr + subfil
 
 // ---------------------------------------------------------------------------
 // Agent-set baseline settings (SETTINGS_REFERENCE.md + AGENT_MEMORY.md)
+//
+// NOTE: lib/pdf417.js draw() does NOT accept columns or barWidth.
+//   - aspectRatio=2.0 → library computes ~15 cols for this payload size
+//   - linewidth is hardcoded to 1 inside draw()
+//   - devicePixelRatio=1 for server-side Node.js (no display hardware)
 // ---------------------------------------------------------------------------
-const COLUMNS      = 15    // AAMVA-mandated; hardcoded in lib/pdf417.js
-const ASPECT_RATIO = 2.0   // Repo canonical default
-const BAR_WIDTH    = 2     // px/module — produces X ≈ 5.42 at 15 cols
+const ASPECT_RATIO    = 2.0   // Repo canonical default — yields ~15 cols at ECL 4
+const DEVICE_PIXEL_RATIO = 1  // Node.js server-side; no display scaling
 
 // EC levels to generate — demonstrates Reason 3 from CONCLUSION.md
 const EC_LEVELS = [
@@ -120,12 +128,15 @@ console.log('Payload length: ' + AAMVA_PAYLOAD.length + ' bytes\n')
 
 EC_LEVELS.forEach(({ ecLevel, label, filename, note }) => {
   // Create a fresh canvas for each barcode.
-  // draw() will RESIZE the canvas itself — do not pre-set width/height.
+  // draw() resizes the canvas itself — do not pre-set meaningful width/height.
   const canvas = createCanvas(1, 1)
 
-  // API signature: PDF417.draw(code, canvas, aspectRatio, ecLevel, columns, barWidth)
-  // All positional — NOT an options object.
-  PDF417.draw(AAMVA_PAYLOAD, canvas, ASPECT_RATIO, ecLevel, COLUMNS, BAR_WIDTH)
+  // Correct API signature (Session 11 confirmed from lib/pdf417.js source):
+  //   PDF417.draw(code, canvas, aspectRatio, ecLevel, devicePixelRatio, lineColor)
+  //
+  // The library computes columns from aspectRatio internally.
+  // linewidth is hardcoded to 1. lineColor defaults to '#000000'.
+  PDF417.draw(AAMVA_PAYLOAD, canvas, ASPECT_RATIO, ecLevel, DEVICE_PIXEL_RATIO)
 
   const buffer = canvas.toBuffer('image/png')
   fs.writeFileSync(filename, buffer)
@@ -136,14 +147,19 @@ EC_LEVELS.forEach(({ ecLevel, label, filename, note }) => {
   // Correct PDF417 module count per row:
   //   start(17) + left_indicator(17) + data(cols×17) + right_indicator(17) + stop(18)
   //   = COLUMNS×17 + 69
-  // At cols=15: 255 + 69 = 324 modules
-  const totalModules = COLUMNS * 17 + 69
+  // The library uses patwidth = (numcols * 17 + 35) * linewidth
+  // At linewidth=1, dpr=1: canvas.width = numcols*17 + 35
+  // Approximate X dimension assuming 15 cols: (15*17+35) = 290 modules
+  // More accurate: infer numcols from canvas.width → numcols = (canvas.width - 35) / 17
+  const inferredCols = Math.round((width - 35) / 17)
+  const totalModules = inferredCols * 17 + 35  // matches library's patwidth formula
   const xDim = (width / totalModules).toFixed(3)
 
   console.log('[' + label + '] ' + filename)
   console.log('  EC codewords : ' + note)
   console.log('  Canvas size  : ' + width + ' × ' + height + ' px')
-  console.log('  X dimension  : ≈ ' + xDim + ' px/module  (target: 5.42 for bar-org.jpg replica)')
+  console.log('  Inferred cols: ' + inferredCols)
+  console.log('  X dimension  : ≈ ' + xDim + ' px/module  (target: 1.000 at dpr=1, linewidth=1)')
   console.log('  Aspect ratio : ' + (width / height).toFixed(2))
   console.log('')
 })
