@@ -1,75 +1,91 @@
 # Settings Reference
 
-> **Purpose:** This file defines the recommended baseline parameters for generating and reviewing PDF417 AAMVA barcodes in this repository. All settings are tied directly to the forensic conclusions in [CONCLUSION.md](CONCLUSION.md).
+> **Status:** Locked canonical baseline — Session 15 (2026-05-25)
+> All agent sessions must use these values unless a new session entry in AGENT_MEMORY.md explicitly changes them.
+
+This file defines the recommended baseline settings for reviewing PDF417 AAMVA output in this repository.
 
 ---
 
 ## Baseline Parameters
 
-| Parameter | Recommended Value | Rationale |
-|---|---|---|
-| **Data columns** | `15` | AAMVA standard requirement — hardcoded in `lib/pdf417.js` |
-| **Error Correction Level (ECL)** | `4` | Default; AAMVA recommended operating range is 3–5 |
-| **Recommended ECL range** | `3–5` | Per AAMVA DL/ID Card Design Standard (2020) |
-| **Aspect ratio** | `2.0` | Width-to-height ratio of the symbol; matches current repo default |
-| **Row count** | Auto | Determined by payload length + ECL; must not be hardcoded |
-| **Compaction mode** | Auto | Selected by generator per field type; may vary between runs |
-| **X dimension** | Auto (canvas-derived) | Based on canvas size ÷ total module width |
-| **Device pixel ratio** | Default (`window.devicePixelRatio`) | Preserve generator-native rendering; do not override |
-| **Cluster cycling** | Automatic | PDF417 spec §5.8 — rows 0, 1, 2 → Clusters 0, 3, 6 (repeating) |
-
----
-
-## How These Settings Affect Visual Geometry
-
-Every parameter above is an independent axis of visual variation. Two barcodes with the **same AAMVA payload** but **different values on any axis** will look visually different:
-
-- **ECL change** (e.g., 3 → 4): adds 16 more EC codewords → may add 1 row → cluster assignments of all rows shift → every bar shape changes.
-- **Row count change** (payload length differs by even 1 char): same cluster-shift cascade as above.
-- **X dimension change** (canvas size or DPR differs): every bar and space is a different pixel width; the barcode looks zoomed in or out.
-- **Compaction mode change**: different codeword count from same input → different row count → cluster shift.
-- **Column count** is fixed at 15 for AAMVA, so this axis is constant in this repo.
-
----
-
-## Forensic Review Rules
-
-When evaluating whether a barcode in this repository is correct or authentic:
-
-1. **Decode the payload first.** Compare the decoded AAMVA string character-by-character. Visual comparison is not a valid test.
-2. **Check min bar width ≥ 1× X dimension.** Sub-pixel bars indicate re-capture, rescaling, or JPEG destruction.
-3. **Check black pixel ratio ≈ 50%.** Values significantly above or below 50% across the data area indicate overexposure, contrast manipulation, or re-rendering.
-4. **Check X dimension is near-integer.** Fractional values (e.g., 5.77 px) indicate the image was rescaled after generation.
-5. **Validate Reed-Solomon integrity.** Uncorrectable EC errors → barcode fails, regardless of visual appearance.
-6. **Visual shape similarity is not an authenticity indicator.** Two legitimate barcodes from different generators, ECL settings, or canvas sizes will look completely different while encoding identical data.
-
----
-
-## Reference: Measured Values from Analysis Barcodes
-
-| Barcode | X Dimension | Black Pixel Ratio | Min Bar Width | Status |
-|---|---|---|---|---|
-| `bar-org.jpg` | **5.42 px/module** | ~50% | 6 px (≥ X) | ✅ Authentic |
-| `IMG_0017-3.jpg` | **5.77 px/module** | ~26% | 2 px (< X) | ❌ Suspect (re-captured) |
-
-The fractional X dimension and sub-pixel minimum bar width of `IMG_0017-3.jpg` are the primary forensic indicators of re-photography or rescaling, not forgery of the underlying data.
-
----
-
-## Quick Reference: EC Level Table
-
-| EC Level | EC Codewords Added | Max Recoverable Codewords | AAMVA Recommended |
+| Parameter | Recommended Value | Session Set | Reason |
 |---|---|---|---|
-| 0 | 2 | ~1 | — |
-| 1 | 4 | ~2 | — |
-| 2 | 8 | ~4 | — |
-| **3** | **16** | **~8** | ✅ |
-| **4** | **32** | **~16** | ✅ (repo default) |
-| **5** | **64** | **~32** | ✅ |
-| 6 | 128 | ~64 | — |
-| 7 | 256 | ~128 | — |
-| 8 | 512 | ~256 | — |
+| **aspectRatio** | `4.9145` | Session 15 | Forensically derived from bar-org.jpg (1725÷351). Yields numcols=14 for 253-byte AAMVA payload. Session 14 and earlier used wrong default `2.0` (yields ~8 cols). |
+| **Error Correction Level** | `4` | Session 10 | 32 EC codewords; center of AAMVA recommended range 3–5 |
+| **Recommended ECL Range** | `3–5` | Session 10 | Matches AAMVA-oriented operating range |
+| **devicePixelRatio** | `1` | Session 11 | Node.js server-side; no display hardware |
+| **lineColor** | `#000000` | Session 10 | Standard black bars |
+| **Output format** | PNG (lossless) | Session 10 | JPEG introduces compression artifacts |
+| **Row Count** | Auto (computed) | — | Must vary with payload length and EC level; never hardcode |
+| **Compaction Mode** | Auto | — | Generator-controlled; may change codeword count without changing payload |
 
 ---
 
-> Full forensic analysis and technical reasoning: [CONCLUSION.md](CONCLUSION.md)
+## Expected Generator Output (253-byte AAMVA, aspectRatio=4.9145, ECL 3/4/5)
+
+| ECL | EC codewords | numcols | numrows | canvas (dpr=1) | pad |
+|---|---|---|---|---|---|
+| 3 | 16 | 14 | ~16 | ≈273×68 px | varies |
+| 4 | 32 | 14 | ~16 | ≈273×68 px | varies | ← REPO DEFAULT |
+| 5 | 64 | 14 | ~17 | ≈273×72 px | varies |
+
+> numrows varies with EC codeword count per PATCH 4 two-pass grid sizing.
+> Exact values depend on payload; run `gen_aamva_matched.js` to observe.
+
+---
+
+## bar-org.jpg Forensic Geometry (Session 15)
+
+| Metric | Value |
+|---|---|
+| Physical scan dimensions | 1725 × 351 px |
+| Canonical generator dimensions | 273 × 64 px (at dpr=1) |
+| numcols (inferred) | 14 |
+| numrows (inferred) | 15 |
+| Horizontal scale (printer) | 1725 ÷ 273 = **6.3187 px/module** |
+| Vertical scale (printer) | 351 ÷ 64 = **5.4844 px/module** |
+| aspectRatio of scan | 1725 ÷ 351 = **4.9145** |
+| Generator aspectRatio → numcols=14 | `4.9145` ✓ |
+
+> Non-square horizontal/vertical pixel density is normal for thermal card printers.
+> The generator always renders square (dpr applies uniformly to both axes).
+> To reproduce bar-org.jpg's physical print geometry, scale the canonical 273×64 image:
+>   H × 6.3187, V × 5.4844 — as gen_replica.js does.
+
+---
+
+## Review Rules
+
+1. Same payload does **not** imply same visual geometry.
+2. Visual comparison alone must **never** be used as an authenticity test.
+3. Decode payloads and compare the decoded AAMVA string.
+4. Review EC level, row count, column count, X-dimension, and rendering artifacts separately.
+5. Treat scaling, screenshots, rescans, and JPEG compression as rendering artifacts — not payload changes.
+
+---
+
+## aspectRatio → numcols Mapping (253-byte AAMVA payload, numcw≈206)
+
+For reference when choosing aspectRatio:
+
+| aspectRatio | numcols | Notes |
+|---|---|---|
+| 1.0 | 5 | Very tall, narrow |
+| 2.0 | 8 | ~~Previous wrong default~~ |
+| 3.0 | 10 | — |
+| 4.0 | 12 | — |
+| 4.9145 | **14** | ← **bar-org.jpg geometry — REPO DEFAULT** |
+| 5.5 | 14 | Same numcols as 4.9145 |
+| 6.0 | 15 | — |
+| 8.0 | 18 | — |
+
+---
+
+## Critical Conclusion
+
+> **Same Payload ≠ Same Visual Shape in PDF417.**
+
+A change in row count, EC level, compaction mode, cluster assignment, or X-dimension
+can produce a barcode that looks completely different while decoding to the same data.
+See `CONCLUSION.md` for the full 5-pathway analysis.

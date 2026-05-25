@@ -34,7 +34,8 @@
  *   Columns are computed internally from aspectRatio using:
  *     numcols = round( (sqrt(4761 + 68 * aspectRatio * ROWHEIGHT * (numcw+1)) - 69) / 34 )
  *   linewidth is hardcoded to 1 inside draw().
- *   Pass aspectRatio=2.0 to get ~15 columns for a 253-byte AAMVA payload.
+ *   Pass aspectRatio=4.9145 to get ~14 columns for a 253-byte AAMVA payload.
+ *   (Session 15: corrected from wrong comment "~15 cols at ar=2.0" — ar=2.0 yields ~8 cols.)
  *
  * REQUIRE FIX (Session 11):
  *   lib/pdf417.js exports { PDF417, HUB3 } — must destructure:
@@ -104,12 +105,14 @@ const AAMVA_PAYLOAD = headerFixed + '01' + 'DL' + offsetStr + lengthStr + subfil
 // Agent-set baseline settings (SETTINGS_REFERENCE.md + AGENT_MEMORY.md)
 //
 // NOTE: lib/pdf417.js draw() does NOT accept columns or barWidth.
-//   - aspectRatio=2.0 → library computes ~15 cols for this payload size
+//   - aspectRatio=4.9145 → library computes ~14 cols for this payload size
+//     This matches bar-org.jpg geometry (14 cols × 15 rows).
+//     Session 15: corrected from 2.0 (which only yields ~8 cols for this payload).
 //   - linewidth is hardcoded to 1 inside draw()
 //   - devicePixelRatio=1 for server-side Node.js (no display hardware)
 // ---------------------------------------------------------------------------
-const ASPECT_RATIO    = 2.0   // Repo canonical default — yields ~15 cols at ECL 4
-const DEVICE_PIXEL_RATIO = 1  // Node.js server-side; no display scaling
+const ASPECT_RATIO    = 4.9145  // Session 15: corrected — yields ~14 cols matching bar-org.jpg
+const DEVICE_PIXEL_RATIO = 1    // Node.js server-side; no display scaling
 
 // EC levels to generate — demonstrates Reason 3 from CONCLUSION.md
 const EC_LEVELS = [
@@ -149,8 +152,7 @@ EC_LEVELS.forEach(({ ecLevel, label, filename, note }) => {
   //   = COLUMNS×17 + 69
   // The library uses patwidth = (numcols * 17 + 35) * linewidth
   // At linewidth=1, dpr=1: canvas.width = numcols*17 + 35
-  // Approximate X dimension assuming 15 cols: (15*17+35) = 290 modules
-  // More accurate: infer numcols from canvas.width → numcols = (canvas.width - 35) / 17
+  // Infer numcols from canvas.width → numcols = (canvas.width - 35) / 17
   const inferredCols = Math.round((width - 35) / 17)
   const totalModules = inferredCols * 17 + 35  // matches library's patwidth formula
   const xDim = (width / totalModules).toFixed(3)
@@ -160,7 +162,7 @@ EC_LEVELS.forEach(({ ecLevel, label, filename, note }) => {
   console.log('  Canvas size  : ' + width + ' × ' + height + ' px')
   console.log('  Inferred cols: ' + inferredCols)
   console.log('  X dimension  : ≈ ' + xDim + ' px/module  (target: 1.000 at dpr=1, linewidth=1)')
-  console.log('  Aspect ratio : ' + (width / height).toFixed(2))
+  console.log('  Aspect ratio : ' + (width / height).toFixed(4))
   console.log('')
 })
 
