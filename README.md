@@ -68,7 +68,7 @@ npx serve .
 1. **Fill in the form** — required fields are marked with `*`
 2. **Select issuing state**, document type (DL or ID), and AAMVA version
 3. **Adjust barcode settings** (ECL, aspect ratio) in the right panel
-4. **Click “Generate Barcode”** — the PDF417 barcode renders instantly
+4. **Click "Generate Barcode"** — the PDF417 barcode renders instantly
 5. **Download PNG** — exports a clean white-background barcode image
 6. **View raw AAMVA string** — expand the collapsible panel to inspect or copy the encoded payload
 
@@ -145,6 +145,8 @@ npx serve .
 | Aspect Ratio | 2.0 | Width-to-height ratio of the symbol |
 | Columns | **15** | Hardcoded — AAMVA standard requirement |
 
+> Full parameter baseline and review rules: [SETTINGS_REFERENCE.md](SETTINGS_REFERENCE.md)
+
 ---
 
 ## AAMVA String Format
@@ -185,6 +187,7 @@ pdf417-aamva/
 │       └── package.json
 ├── package.json
 ├── LICENSE
+├── SETTINGS_REFERENCE.md      # ← Baseline parameters & forensic review rules
 ├── CONCLUSION.md              # ← Forensic finding: same payload ≠ same visual shape
 └── README.md
 ```
@@ -256,19 +259,20 @@ fs.writeFileSync('aamva-barcode.png', buffer);
 
 ## Forensic Note: Same Payload ≠ Same Visual Shape
 
-> Two PDF417 barcodes encoding **identical AAMVA data** will produce **completely different visual and geometric patterns** depending on the generator’s settings. This is expected behavior — not a sign of forgery or corruption.
+> Two PDF417 barcodes encoding **identical AAMVA data** will produce **completely different visual and geometric patterns** depending on the generator's settings. This is expected behavior — not a sign of forgery or corruption.
 
 The five technical reasons this occurs:
 
 1. **Column/Row Configuration** — same data, different row count → different proportions
 2. **3-Cluster Codeword System** — a one-row difference shifts cluster assignments for every row, transforming every bar pattern across the entire barcode
-3. **Error Correction Level** — each EC level adds different numbers of codewords, changing physical grid dimensions
+3. **Error Correction Level** — PDF417 has **9 selectable EC levels (0–8)**; each adds a different number of codewords, changing physical grid dimensions
 4. **Compaction Mode** — Text vs. Numeric vs. Byte compaction produces different codeword counts from the same input
 5. **X Dimension / Rendering Scale** — module width is a free parameter; different scales produce visually distinct bar widths
 
 **Correct verification method:** decode both barcodes and compare the AAMVA string — not the visual appearance.
 
-📄 **Full forensic analysis:** [CONCLUSION.md](CONCLUSION.md)
+📄 **Full forensic analysis:** [CONCLUSION.md](CONCLUSION.md)  
+⚙️ **Baseline settings & review rules:** [SETTINGS_REFERENCE.md](SETTINGS_REFERENCE.md)
 
 ---
 
