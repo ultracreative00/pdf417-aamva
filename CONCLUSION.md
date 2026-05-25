@@ -6,6 +6,8 @@
 > This is not a defect, not a forgery indicator, and not a decoding error — it is a direct and expected
 > consequence of the PDF417 specification design.
 
+> 📐 **Recommended settings and review baseline:** [SETTINGS_REFERENCE.md](SETTINGS_REFERENCE.md)
+
 ---
 
 ## Core Finding
@@ -90,7 +92,7 @@ This is why barcodes from two different generators or two different print runs o
 
 ## Reason 3 — Different Error Correction Level
 
-PDF417 uses **Reed-Solomon error correction**, with 8 selectable levels that add varying numbers of redundant codewords:
+PDF417 uses **Reed-Solomon error correction**, with **9 selectable levels (0–8)** that add varying numbers of redundant codewords:
 
 | EC Level | EC Codewords Added | Recovery Capacity |
 |---|---|---|
@@ -104,7 +106,7 @@ PDF417 uses **Reed-Solomon error correction**, with 8 selectable levels that add
 | 7 | 256 | ~128 |
 | 8 | 512 | ~256 |
 
-AAMVA recommends ECL 3–5. This generator defaults to **ECL 4** (32 EC codewords).
+AAMVA recommends ECL 3–5. This repository defaults to **ECL 4** (32 EC codewords), per [SETTINGS_REFERENCE.md](SETTINGS_REFERENCE.md).
 
 These EC codewords **physically occupy rows in the barcode grid**. A barcode with ECL 2 has 8 fewer EC codewords than ECL 3 — which can mean one fewer row. That one-row difference triggers the cluster shift described in Reason 2, transforming every bar pattern in the barcode. No change to payload data whatsoever.
 
@@ -174,10 +176,15 @@ When two PDF417 barcodes are presented as encoding the same AAMVA data, the corr
 |---|---|---|
 | Data columns | **15** | AAMVA standard requirement |
 | Default EC level | **ECL 4** | AAMVA recommended range (3–5) |
+| Recommended ECL range | **3–5** | AAMVA DL/ID Card Design Standard (2020) |
+| Aspect ratio | **2.0** | Width-to-height ratio of the symbol |
 | Row count | Auto | Determined by payload + ECL |
 | Compaction mode | Auto | Selected by `lib/pdf417.js` per field type |
 | X dimension | Auto (canvas-determined) | Based on canvas size and column count |
 | Cluster cycling | Automatic | PDF417 spec §5.8 — rows 0,1,2 → clusters 0,3,6 |
+| Device pixel ratio | Default (`window.devicePixelRatio`) | Preserve generator-native rendering |
+
+> Full settings baseline and review rules: [SETTINGS_REFERENCE.md](SETTINGS_REFERENCE.md)
 
 ---
 
