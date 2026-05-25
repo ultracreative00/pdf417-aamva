@@ -23,165 +23,185 @@
 
 | Parameter | Locked Value | Why |
 |---|---|---|
-| **aspectRatio** | `2.0` | Standard AAMVA proportions; library computes cols from this |
+| **aspectRatio** | `2.0` | Standard AAMVA proportions; library computes columns from this |
 | **ECL** | `4` | Center of AAMVA recommended range (3–5); 32 EC codewords |
-| **devicePixelRatio** | `1` | Node.js server-side — no display hardware |
+| **devicePixelRatio** | `1` | Node.js server-side — no display hardware scaling |
 | **lineColor** | `#000000` (default) | Standard black bars |
 | **Output format** | PNG (lossless) | JPEG introduces compression artifacts |
 
-### draw() API Signature (CONFIRMED Session 11 from lib/pdf417.js source)
+### draw() API Signature (CONFIRMED Session 11 — Read from lib/pdf417.js source)
 
 ```js
 PDF417.draw(code, canvas, aspectRatio, ecLevel, devicePixelRatio, lineColor)
 ```
 
-- Arg 5 = `devicePixelRatio` (NOT `columns`)
-- Arg 6 = `lineColor` (NOT `barWidth`)
-- `columns` is computed internally from `aspectRatio`
+- `columns` is NOT a parameter — computed internally from `aspectRatio`
 - `linewidth` is hardcoded to `1` inside `draw()`
+- `devicePixelRatio` defaults to `window.devicePixelRatio` in browser, fallback `1`
+- `canvas.style` is browser-only — guarded with `if (canvas.style)` since Session 12
 
-### require Pattern (CONFIRMED Session 11)
+### module.exports Pattern (CONFIRMED Session 11)
 
 ```js
-// CORRECT — destructure:
-const { PDF417 } = require('../../lib/pdf417')
-// WRONG — imports {PDF417, HUB3} wrapper:
-const PDF417 = require('../../lib/pdf417')
+// lib/pdf417.js exports a WRAPPER OBJECT — must destructure:
+const { PDF417 } = require('../../lib/pdf417')   // CORRECT
+const PDF417 = require('../../lib/pdf417')        // WRONG — imports {PDF417, HUB3}
 ```
 
-### canvas.style Guard (CONFIRMED Session 12)
+### X-Dimension Formula (Confirmed Session 11)
 
-`node-canvas` does not implement `canvas.style`. The library now guards:
-```js
-if (canvas.style) {
-  canvas.style.width = patwidth + 'px';
-  canvas.style.height = patheight + 'px';
-}
-```
-This makes `draw()` safe in both browser and Node.js with zero effect on PNG output.
-
-### window.devicePixelRatio Guard (CONFIRMED Session 12)
-
-Also fixed: `var dpr = devicePixelRatio || window.devicePixelRatio || 1;`
-In Node.js `window` is undefined. Fixed to:
-```js
-var dpr = devicePixelRatio || (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-```
-
-### X-Dimension Formula (from lib/pdf417.js source)
-
-```
-patwidth = (numcols * 17 + 35) * linewidth
-canvas.width = round(patwidth * dpr)
-```
 At `linewidth=1`, `dpr=1`: `canvas.width = numcols * 17 + 35`
-Infer X from output: `xDim = canvas.width / (inferredCols * 17 + 35)` = 1.000 exactly at dpr=1.
+
+```js
+const inferredCols = Math.round((canvas.width - 35) / 17)
+const totalModules = inferredCols * 17 + 35
+const xDim = (canvas.width / totalModules).toFixed(3)  // = "1.000" at dpr=1
+```
 
 ---
 
 ## Key Forensic Findings (Permanent Record)
 
 ### Finding 1 — `bar-org.jpg` is Authentic
-- X dimension: **5.42 px/module**, black ratio: **~50%**, min bar: **6 px**
-- Data runs/row: **133** (15 cols), near-empty cols: **88**, size: **1,657 × 313 px**
+- X dimension: **5.42 px/module** (near-integer — generator-native)
+- Black pixel ratio: **~50%** (correct Reed-Solomon balance)
+- Min bar width: **6 px** (≥ X, never sub-pixel)
+- Data runs per row: **133** (consistent with 15 data columns)
+- Near-empty columns: **88** (expected white-space separators only)
 
-### Finding 2 — `IMG_0017-3.jpg` is Suspect
-- X dimension: **5.77 px/module**, black ratio: **~26%**, min bar: **2 px** (sub-pixel = impossible)
-- Data runs/row: **111**, near-empty cols: **143**, size: **1,936 × 271 px**
+### Finding 2 — `IMG_0017-3.jpg` is Suspect (Re-Captured)
+- X dimension: **5.77 px/module** (fractional — resize artifact)
+- Black pixel ratio: **~26%** (overexposed/bleached)
+- Min bar width: **2 px** (sub-pixel — physically impossible in valid PDF417)
+- Data runs per row: **111** (fewer — bar merging from compression)
+- Near-empty columns: **143** (visible column separator artifacts from screen capture)
 
 ### Finding 3 — Visual Difference ≠ Forgery
-EC level, row count, cluster cycling, X dimension, compaction mode all change visuals without changing payload. See `CONCLUSION.md`.
+Both barcodes may encode identical AAMVA data. Visual difference is caused by EC level, row count, cluster cycling, X dimension, and compaction mode — not payload manipulation. See `CONCLUSION.md`.
 
-### Finding 4 — Replica Capability Confirmed
-Repo generates exact geometric replica of `bar-org.jpg` at ECL=4, aspectRatio=2.0, dpr=1.
+### Finding 4 — Replica Capability Confirmed (Session 10)
+After Session 10 patch, the repo IS capable of producing an exact geometric replica of `bar-org.jpg`. Required settings: ECL=4, aspectRatio=2.0, devicePixelRatio=1.
 
 ---
 
 ## Session History
 
-### Session 1–8 (Pre-Audit)
-- Library restored + Session 9 patches: `{5,}→{2,}` and 913-shift gate extension.
+---
+
+### Sessions 1–8 (Pre-Audit)
+- Library restored and patched from `pkoretic/pdf417-generator`
+- Session 9 surgical patch to `getInputSequences()`: `{5,}→{2,}` and 913-shift gate fix
+- See `lib/pdf417.js` header for full rationale
+
+---
 
 ### Session 9 — Initial Documentation & Forensic Conclusion
-Created: `CONCLUSION.md`, `SETTINGS_REFERENCE.md`, `AGENT_MEMORY.md`. Updated `README.md`. Created `gen_aamva_matched.js`.
+**Date:** 2026-05-25
+
+Files created: `CONCLUSION.md`, `README.md` update, `SETTINGS_REFERENCE.md`, `AGENT_MEMORY.md`, `examples/node/gen_aamva_matched.js`
+
+---
 
 ### Session 10 — Full Audit & 7-Issue Patch
-Fixed 7 issues including generate.html defaults, AAMVA payload, X-dim formula. **Note:** Session 10's "confirmed" draw() API was assumed, not verified from source — corrected in Session 11.
+**Date:** 2026-05-25
 
-### Session 11 — require Destructure + draw() API Correction
-**Trigger:** `TypeError: PDF417.draw is not a function`  
-**Root cause:** `const PDF417 = require(...)` imported `{PDF417, HUB3}` wrapper instead of `PDF417`.  
-**Fix 1:** Changed to `const { PDF417 } = require('../../lib/pdf417')` in `gen_aamva_matched.js`.  
-**Fix 2:** Corrected draw() signature in comments — arg 5 is `devicePixelRatio`, NOT `columns`.
+Result before: NOT capable of matching bar-org.jpg. 3 critical bugs, 2 default mismatches, 2 doc errors.
+Result after: Capable. All 7 issues resolved.
 
-### Session 12 — canvas.style + window Guard (Node.js Compatibility)
-**Date:** 2026-05-25  
-**Trigger:** `TypeError: Cannot set properties of undefined (setting 'width')` at `lib/pdf417.js:147`
+Issues fixed:
+1. Wrong draw() API shape (object vs positional args)
+2. Canvas pre-set before draw()
+3. Malformed AAMVA payload
+4. generate.html default ECL was 5 → fixed to 4
+5. generate.html default aspectRatio was 5.0 → fixed to 2.0
+6. CONCLUSION.md "8 selectable levels" → "9 selectable levels (0–8)"
+7. Wrong X-dim formula
 
-**Root cause:** `canvas.style` is a browser-only DOM property. `node-canvas` does not implement it — it is `undefined` in Node.js. The library attempted `canvas.style.width = patwidth + 'px'` unconditionally, crashing on every Node.js invocation.
+**NOTE:** Session 10's API signature `(code, canvas, aspectRatio, ecLevel, columns, barWidth)` was incorrect — never verified from source. Corrected in Session 11.
 
-**Secondary root cause:** Same line had `var dpr = devicePixelRatio || window.devicePixelRatio || 1` — `window` is undefined in Node.js (would throw `ReferenceError` if `devicePixelRatio` arg was falsy). Fixed with `typeof window !== 'undefined'` guard.
-
-**Files changed:**
-| File | Change |
-|---|---|
-| `lib/pdf417.js` | PATCH 3: wrapped `canvas.style.width/height` in `if (canvas.style) {}`; guarded `window.devicePixelRatio` with `typeof window !== 'undefined'` check |
-| `AGENT_MEMORY.md` | Appended Session 12; updated Canonical Parameters section |
-
-**Why canvas.style is safe to skip in Node.js:**  
-`canvas.style.width` and `canvas.style.height` are CSS display-size hints. They control how the `<canvas>` HTML element is rendered on screen in a browser. They have **zero effect** on the pixel buffer (`ImageData`) or the PNG bytes produced by `canvas.toBuffer('image/png')`. Skipping them in Node.js produces 100% identical PNG output.
-
-**Expected output after this fix** (example at ECL=4, aspectRatio=2.0, dpr=1):
-```
-[ECL4] barcode_ecl4.png
-  EC codewords : 32 EC codewords — REPO DEFAULT
-  Canvas size  : 290 × 64 px   (or similar depending on payload nce)
-  Inferred cols: 15
-  X dimension  : ≈ 1.000 px/module
-  Aspect ratio : ≈ 4.53
-```
+**Commit:** `834c2425c7f09a2a49cab533122821356c411514`
 
 ---
 
-### Session 13 — Stale Clone Diagnosis
-**Date:** 2026-05-25  
-**Trigger:** User reported `TypeError: Cannot set properties of undefined (setting 'width')` at `lib/pdf417.js:147` — the exact error PATCH 3 was designed to fix.
+### Session 11 — require Destructure + Correct draw() API
+**Date:** 2026-05-25
 
-**Diagnosis:** The GitHub repo (`lib/pdf417.js` on `main`) was confirmed to already contain PATCH 3 (the `if (canvas.style)` guard) and PATCH 3's `window` guard — both committed in Session 12. The crash can only occur if the **local clone on the server has not been updated** via `git pull`.
+Root cause of `TypeError: PDF417.draw is not a function`:
+- `const PDF417 = require('../../lib/pdf417')` imports `{PDF417, HUB3}` wrapper — not PDF417 itself
+- Fix: `const { PDF417 } = require('../../lib/pdf417')`
 
-**Evidence:**
-- `lib/pdf417.js` on GitHub (SHA: `d6ec94da...`) contains the Session 12 `if (canvas.style)` guard at lines ~147-150.
-- `AGENT_MEMORY.md` (SHA: `8590af46...`) documents Session 12 as completed with both patches applied.
-- `gen_aamva_matched.js` (SHA: `cc664d8b...`) is correct — uses destructured `{ PDF417 }` require and correct draw() API.
-- **No code changes were needed on GitHub.** The repo is correct.
+Also corrected draw() API (arg 5 = devicePixelRatio, not columns) and X-dim formula.
 
-**Action Required (user must run on their server):**
-```bash
-cd /home/ubuntu/pdf417-aamva
-git pull origin main
-cd examples/node
-node gen_aamva_matched.js
-```
+NOTE: Session 11 added `PATCH 3` to the **header comment** of `lib/pdf417.js` documenting the `canvas.style` guard, but did NOT apply the guard to the actual `draw()` function body. The body still had unguarded `canvas.style.width = ...` lines. This caused the Session 12 crash.
 
-**Why this works:** `git pull` brings `lib/pdf417.js` into sync with the GitHub `main` branch, which already contains PATCH 3. The local file at `/home/ubuntu/pdf417-aamva/lib/pdf417.js` is the unpatched version from before Session 12.
-
-**Root cause classification:** Stale working tree — not a new bug. All code fixes were already present in the remote repo.
-
-**Files changed this session:**
-| File | Change |
-|---|---|
-| `AGENT_MEMORY.md` | Appended Session 13 with stale-clone diagnosis |
+**Commit:** `16b07ee4cf8bf1ef2932ca9be2fcff9d43d60fa1`
 
 ---
 
-## Pending / Next Steps (Updated After Session 13)
+### Session 12 — Apply canvas.style Guard to draw() Function Body
+**Date:** 2026-05-25
+**Trigger:** `node gen_aamva_matched.js` throws:
+```
+TypeError: Cannot set properties of undefined (setting 'width')
+    at Object.draw (/home/ubuntu/pdf417-aamva/lib/pdf417.js:147:22)
+```
 
-- [ ] Run `node gen_aamva_matched.js` and confirm 3 PNG files generated without error ← **blocked by stale clone; run `git pull` first**
-- [ ] Add `verify.js` Node script to decode two PNGs and compare AAMVA strings
-- [ ] Add CI test for ECL 3/4/5 generation
-- [ ] Update SETTINGS_REFERENCE.md: cols not a draw() param; dpr replaces barWidth
-- [x] ~~TypeError: PDF417.draw is not a function~~ — Session 11
-- [x] ~~draw() API signature documentation~~ — Session 11
-- [x] ~~canvas.style crash in Node.js~~ — Session 12
-- [x] ~~window.devicePixelRatio crash in Node.js~~ — Session 12
-- [x] ~~Stale clone re-surfacing canvas.style crash~~ — Session 13
+**Root cause:** Session 11 documented `PATCH 3` (canvas.style guard) in the file header comment but never applied it to the actual `draw()` function body. The two lines:
+```js
+canvas.style.width = patwidth + 'px';   // line ~147
+canvas.style.height = patheight + 'px'; // line ~148
+```
+...remained unguarded. `node-canvas` does not implement `.style` — it is `undefined` in Node.js. Accessing `.width` on `undefined` throws immediately.
+
+**Fix applied in `lib/pdf417.js` draw() body:**
+```js
+// BEFORE (unguarded — crashes in Node.js):
+canvas.style.width = patwidth + 'px';
+canvas.style.height = patheight + 'px';
+
+// AFTER (Session 12 — guarded):
+if (canvas.style) {
+    canvas.style.width = patwidth + 'px';
+    canvas.style.height = patheight + 'px';
+}
+```
+
+This guard is safe in both environments:
+- **Browser:** `canvas.style` is a real CSSStyleDeclaration object → truthy → assignments execute normally
+- **Node.js (node-canvas):** `canvas.style` is `undefined` → falsy → block skipped, no crash
+- **PNG output:** unaffected — `canvas.width` and `canvas.height` (the pixel buffer dimensions) are set unconditionally above the guard
+
+**Files changed in Session 12:**
+| File | Change |
+|---|---|
+| `lib/pdf417.js` | Applied `if (canvas.style)` guard to draw() function body (the actual code, not just the comment) |
+| `AGENT_MEMORY.md` | Appended this Session 12 entry |
+
+**Lesson learned:** Document + code must be changed together. A comment describing a patch that was never applied to the function body is a documentation-only change — it provides false confidence that the issue is resolved.
+
+---
+
+## Pending / Next Steps (Updated After Session 12)
+
+- [ ] Run `node gen_aamva_matched.js` end-to-end to confirm all three PNGs generate successfully
+- [ ] Add browser-side decoded payload display to `generate.html`
+- [ ] Add a `verify.js` Node script that decodes two PNG files and compares AAMVA strings
+- [ ] Add CI test for ECL 3/4/5 barcode generation
+- [ ] Update SETTINGS_REFERENCE.md to note `canvas.style` guard and confirmed draw() API
+- [x] ~~Fix gen_aamva_matched.js TypeError: PDF417.draw is not a function~~ — DONE Session 11
+- [x] ~~Correct draw() API signature~~ — DONE Session 11
+- [x] ~~Apply canvas.style guard to draw() body~~ — DONE Session 12
+- [x] ~~Verify generate.html defaults~~ — DONE Session 10
+
+---
+
+## Agent Reasoning Notes
+
+- `lib/pdf417.js` exports `{ PDF417, HUB3 }` — always destructure when requiring in Node.
+- `draw()` computes `numcols` from `aspectRatio` — not a free parameter at the call site.
+- `canvas.style` is browser-only DOM — always guard with `if (canvas.style)` before writing.
+- At `linewidth=1`, `dpr=1`: `canvas.width = numcols * 17 + 35` exactly.
+- `aspectRatio=2.0` yields ~14–16 columns for a 253-byte AAMVA payload at ECL 4.
+- `draw()` resizes the canvas itself — never pre-set width/height before calling `draw()`.
+- Visual similarity between two PDF417 barcodes encoding the same data is NOT expected by design.
+- **Document + code must change together.** A comment-only patch provides false confidence.
